@@ -3,6 +3,7 @@ import { Prisma, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class UsersService {
@@ -31,6 +32,23 @@ export class UsersService {
         role: UserRole.OWNER,
       },
     });
+
+    return this.sanitizeUser(user);
+  }
+
+  async login(payload: LoginDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: payload.email },
+    });
+
+    if (!user) {
+      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    }
+
+    const valid = await bcrypt.compare(payload.password, user.passwordHash);
+    if (!valid) {
+      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    }
 
     return this.sanitizeUser(user);
   }

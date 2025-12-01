@@ -1,0 +1,260 @@
+{
+  "info": {
+    "name": "Peanut API",
+    "_postman_id": "placeholder-id",
+    "description": "Colección de endpoints del API Nest para importar en Postman.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Sign up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"superseguro123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Get user by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dogs",
+      "item": [
+        {
+          "name": "Create dog",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ownerId\": \"{{userId}}\",\n  \"name\": \"Fido\",\n  \"breed\": \"Labrador\",\n  \"mixedBreed\": false,\n  \"ageYears\": 3,\n  \"sex\": \"MALE\",\n  \"color\": \"black\",\n  \"size\": \"MEDIUM\",\n  \"microchip\": \"123456789\",\n  \"passportId\": \"ABC-123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/dogs",
+              "host": ["{{baseUrl}}"],
+              "path": ["dogs"]
+            }
+          }
+        },
+        {
+          "name": "Get dog by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/dogs/{{dogId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["dogs", "{{dogId}}"]
+            }
+          }
+        },
+        {
+          "name": "List dogs by owner",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/dogs",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "dogs"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lost Reports",
+      "item": [
+        {
+          "name": "Create lost report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dogId\": \"{{dogId}}\",\n  \"ownerId\": \"{{userId}}\",\n  \"description\": \"Se perdió cerca del parque\",\n  \"lastSeenLatitude\": -33.45,\n  \"lastSeenLongitude\": -70.66,\n  \"rewardOffered\": 50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/lost-reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["lost-reports"]
+            }
+          }
+        },
+        {
+          "name": "List active lost reports",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/lost-reports/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["lost-reports", "active"]
+            }
+          }
+        },
+        {
+          "name": "Get lost report by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/lost-reports/{{lostReportId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["lost-reports", "{{lostReportId}}"]
+            }
+          }
+        },
+        {
+          "name": "List sightings for lost report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/lost-reports/{{lostReportId}}/sightings",
+              "host": ["{{baseUrl}}"],
+              "path": ["lost-reports", "{{lostReportId}}", "sightings"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sightings",
+      "item": [
+        {
+          "name": "Create sighting",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"dogId\": \"{{dogId}}\",\n  \"lostReportId\": \"{{lostReportId}}\",\n  \"latitude\": -33.45,\n  \"longitude\": -70.66,\n  \"imageUrl\": \"https://example.com/dog.jpg\",\n  \"notes\": \"Visto en la plaza\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sightings",
+              "host": ["{{baseUrl}}"],
+              "path": ["sightings"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Scan Events",
+      "item": [
+        {
+          "name": "Create scan event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"imageUrl\": \"https://example.com/nose.jpg\",\n  \"mode\": \"NOSE\",\n  \"latitude\": -33.45,\n  \"longitude\": -70.66\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/scan-events",
+              "host": ["{{baseUrl}}"],
+              "path": ["scan-events"]
+            }
+          }
+        },
+        {
+          "name": "Get scan event by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/scan-events/{{scanEventId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["scan-events", "{{scanEventId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List notifications for user",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "notifications"]
+            }
+          }
+        },
+        {
+          "name": "Mark notifications read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notificationIds\": [\n    \"{{notificationId1}}\",\n    \"{{notificationId2}}\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/mark-read",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "mark-read"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
