@@ -1,0 +1,450 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  OWNER
+  RESCUER
+  VET
+  MUNICIPALITY_ADMIN
+  ADMIN
+}
+
+enum DogSex {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum DogSize {
+  SMALL
+  MEDIUM
+  LARGE
+}
+
+enum ScanMode {
+  NOSE
+  APPEARANCE
+}
+
+enum ScanStatus {
+  PENDING
+  MATCHED
+  NO_MATCH
+}
+
+enum LostReportStatus {
+  ACTIVE
+  RESOLVED
+  CANCELLED
+}
+
+enum TargetType {
+  LOST_REPORT
+  SIGHTING
+}
+
+enum ReactionType {
+  LIKE
+  HELPING
+  FOLLOWING
+}
+
+enum NotificationType {
+  SCAN_MATCH
+  NEW_SIGHTING
+  LOST_REPORT_UPDATED
+  SYSTEM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+enum MarketplaceItemType {
+  PRODUCT
+  SERVICE
+}
+
+enum ApiClientType {
+  MUNICIPALITY
+  VET
+  NGO
+  PARTNER
+}
+
+enum ExternalPlatform {
+  FACEBOOK
+  INSTAGRAM
+  X
+  WEB
+}
+
+enum ParsedAsType {
+  LOST_REPORT
+  SIGHTING
+  UNKNOWN
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  role      UserRole
+  passwordHash String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerProfile      Owner?
+  dogs              Dog[]
+  scanEvents        ScanEvent[]
+  sightings         Sighting[]
+  comments          Comment[]
+  reactions         Reaction[]
+  notifications     Notification[]
+  notificationSettings NotificationSettings?
+  lostReports       LostReport[]
+  media             Media[]
+  subscriptions     UserSubscription[]
+  orders            Order[]
+  marketplaceItems  MarketplaceItem[] @relation("MarketplaceItemProvider")
+  vetClinics        VetClinic[]       @relation("VetClinicOwner")
+}
+
+model Owner {
+  id      String @id @default(uuid())
+  userId  String @unique
+  address String?
+  city    String?
+  country String?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Dog {
+  id          String   @id @default(uuid())
+  ownerId     String
+  name        String
+  breed       String?
+  mixedBreed  Boolean  @default(false)
+  ageYears    Int?
+  sex         DogSex
+  color       String?
+  size        DogSize
+  microchip   String?
+  passportId  String?
+  lostStatus  Boolean  @default(false)
+  lostSince   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner              User                @relation(fields: [ownerId], references: [id])
+  noseEmbedding      NoseEmbedding?
+  appearanceEmbedding AppearanceEmbedding?
+  lostReports        LostReport[]
+  sightings          Sighting[]
+  scanEvents         ScanEvent[]
+  identificationResults IdentificationResult[]
+}
+
+model NoseEmbedding {
+  id           String   @id @default(uuid())
+  dogId        String   @unique
+  vector       Bytes
+  modelVersion String
+  createdAt    DateTime @default(now())
+
+  dog Dog @relation(fields: [dogId], references: [id])
+}
+
+model AppearanceEmbedding {
+  id           String   @id @default(uuid())
+  dogId        String   @unique
+  vector       Bytes
+  modelVersion String
+  createdAt    DateTime @default(now())
+
+  dog Dog @relation(fields: [dogId], references: [id])
+}
+
+model ScanEvent {
+  id          String     @id @default(uuid())
+  userId      String?
+  dogId       String?
+  mode        ScanMode
+  imageId     String
+  locationId  String?
+  matchScore  Float?
+  status      ScanStatus
+  createdAt   DateTime   @default(now())
+
+  user     User?     @relation(fields: [userId], references: [id])
+  dog      Dog?      @relation(fields: [dogId], references: [id])
+  image    Media     @relation(fields: [imageId], references: [id])
+  location Location? @relation(fields: [locationId], references: [id])
+  results  IdentificationResult[]
+}
+
+model IdentificationResult {
+  id            String   @id @default(uuid())
+  scanEventId   String
+  candidateDogId String
+  score         Float
+  rank          Int
+  createdAt     DateTime @default(now())
+
+  scanEvent ScanEvent @relation(fields: [scanEventId], references: [id])
+  candidateDog Dog    @relation(fields: [candidateDogId], references: [id])
+}
+
+model Media {
+  id              String   @id @default(uuid())
+  url             String
+  type            String
+  source          String
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+
+  createdByUser User?    @relation(fields: [createdByUserId], references: [id])
+  scanEvents    ScanEvent[]
+  sightings     Sighting[]
+  externalPosts ExternalPost[]
+}
+
+model Location {
+  id          String   @id @default(uuid())
+  latitude    Float
+  longitude   Float
+  addressText String?
+  city        String?
+  country     String?
+  createdAt   DateTime @default(now())
+
+  scanEvents     ScanEvent[]
+  lostReports    LostReport[]
+  sightings      Sighting[]
+  externalPosts  ExternalPost[]
+}
+
+model LostReport {
+  id                 String   @id @default(uuid())
+  dogId              String
+  ownerId            String
+  description        String?
+  lastSeenLocationId String?
+  lastSeenAt         DateTime?
+  status             LostReportStatus
+  rewardOffered      Float?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  dog        Dog       @relation(fields: [dogId], references: [id])
+  owner      User      @relation(fields: [ownerId], references: [id])
+  lastSeenLocation Location? @relation(fields: [lastSeenLocationId], references: [id])
+  sightings   Sighting[]
+  externalPosts ExternalPost[]
+}
+
+model Sighting {
+  id           String   @id @default(uuid())
+  dogId        String?
+  lostReportId String?
+  userId       String
+  locationId   String
+  imageId      String?
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  dog        Dog?       @relation(fields: [dogId], references: [id])
+  lostReport LostReport? @relation(fields: [lostReportId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+  location   Location   @relation(fields: [locationId], references: [id])
+  image      Media?     @relation(fields: [imageId], references: [id])
+  externalPosts ExternalPost[]
+}
+
+model Comment {
+  id         String     @id @default(uuid())
+  userId     String
+  targetType TargetType
+  targetId   String
+  text       String
+  createdAt  DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Reaction {
+  id         String       @id @default(uuid())
+  userId     String
+  targetType TargetType
+  targetId   String
+  type       ReactionType
+  createdAt  DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  payload   Json
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model NotificationSettings {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  pushEnabled       Boolean
+  emailEnabled      Boolean
+  smsEnabled        Boolean
+  lostAlertsRadiusKm Float
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model SubscriptionPlan {
+  id           String   @id @default(uuid())
+  name         String
+  priceMonthly Float
+  features     String[]
+  createdAt    DateTime @default(now())
+
+  userSubscriptions UserSubscription[]
+}
+
+model UserSubscription {
+  id        String              @id @default(uuid())
+  userId    String
+  planId    String
+  status    SubscriptionStatus
+  startedAt DateTime
+  expiresAt DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+}
+
+model MarketplaceItem {
+  id          String              @id @default(uuid())
+  type        MarketplaceItemType
+  title       String
+  description String?
+  price       Float
+  currency    String
+  providerId  String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  provider User   @relation("MarketplaceItemProvider", fields: [providerId], references: [id])
+  orders   Order[]
+}
+
+model Order {
+  id          String   @id @default(uuid())
+  buyerId     String
+  itemId      String
+  quantity    Int
+  totalAmount Float
+  currency    String
+  status      String
+  createdAt   DateTime @default(now())
+
+  buyer User           @relation(fields: [buyerId], references: [id])
+  item  MarketplaceItem @relation(fields: [itemId], references: [id])
+}
+
+model VetClinic {
+  id          String   @id @default(uuid())
+  name        String
+  address     String?
+  city        String?
+  country     String?
+  ownerUserId String
+  createdAt   DateTime @default(now())
+
+  ownerUser  User      @relation("VetClinicOwner", fields: [ownerUserId], references: [id])
+  apiClients ApiClient[]
+}
+
+model Municipality {
+  id        String   @id @default(uuid())
+  name      String
+  country   String
+  region    String?
+  city      String?
+  createdAt DateTime @default(now())
+
+  apiClients ApiClient[]
+}
+
+model ApiClient {
+  id                 String       @id @default(uuid())
+  name               String
+  type               ApiClientType
+  apiKeyHash         String
+  municipalityId     String?
+  vetClinicId        String?
+  rateLimitPerMinute Int
+  createdAt          DateTime     @default(now())
+
+  municipality Municipality? @relation(fields: [municipalityId], references: [id])
+  vetClinic   VetClinic?     @relation(fields: [vetClinicId], references: [id])
+  webhooks    WebhookEndpoint[]
+}
+
+model WebhookEndpoint {
+  id          String   @id @default(uuid())
+  apiClientId String
+  url         String
+  eventTypes  String[]
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  apiClient ApiClient @relation(fields: [apiClientId], references: [id])
+}
+
+model ExternalSource {
+  id        String           @id @default(uuid())
+  name      String
+  platform  ExternalPlatform
+  url       String
+  active    Boolean          @default(true)
+  createdAt DateTime         @default(now())
+
+  posts ExternalPost[]
+}
+
+model ExternalPost {
+  id                 String        @id @default(uuid())
+  externalSourceId   String
+  externalId         String
+  rawText            String
+  rawData            Json
+  imageId            String?
+  detectedLocationId String?
+  parsedAs           ParsedAsType
+  linkedLostReportId String?
+  linkedSightingId   String?
+  processedAt        DateTime?
+  createdAt          DateTime     @default(now())
+
+  externalSource ExternalSource @relation(fields: [externalSourceId], references: [id])
+  image          Media?         @relation(fields: [imageId], references: [id])
+  detectedLocation Location?    @relation(fields: [detectedLocationId], references: [id])
+  linkedLostReport LostReport?  @relation(fields: [linkedLostReportId], references: [id])
+  linkedSighting   Sighting?    @relation(fields: [linkedSightingId], references: [id])
+}
