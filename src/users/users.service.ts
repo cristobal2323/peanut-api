@@ -1,24 +1,24 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import type { SignOptions } from 'jsonwebtoken';
-import { UserRole } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
-import { PrismaService } from '../prisma/prisma.service';
-import { MailService } from '../mail/mail.service';
-import { SignupDto } from './dto/signup.dto';
-import { LoginDto } from './dto/login.dto';
-import { RecoverPasswordDto } from './dto/recover-password.dto';
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import type { SignOptions } from "jsonwebtoken";
+import { UserRole } from "@prisma/client";
+import * as bcrypt from "bcrypt";
+import * as crypto from "crypto";
+import { PrismaService } from "../prisma/prisma.service";
+import { MailService } from "../mail/mail.service";
+import { SignupDto } from "./dto/signup.dto";
+import { LoginDto } from "./dto/login.dto";
+import { RecoverPasswordDto } from "./dto/recover-password.dto";
 
 @Injectable()
 export class UsersService {
-  private readonly jwtExpiresIn: SignOptions['expiresIn'] =
-    (process.env.JWT_EXPIRES_IN as SignOptions['expiresIn']) || '7d';
+  private readonly jwtExpiresIn: SignOptions["expiresIn"] =
+    (process.env.JWT_EXPIRES_IN as SignOptions["expiresIn"]) || "7d";
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly mailService: MailService,
+    private readonly mailService: MailService
   ) {}
 
   private sanitizeUser<T extends { passwordHash?: string }>(user: T) {
@@ -27,9 +27,15 @@ export class UsersService {
     return safe;
   }
 
-  private async generateToken(user: { id: string; email: string; role: UserRole }) {
+  private async generateToken(user: {
+    id: string;
+    email: string;
+    role: UserRole;
+  }) {
     const payload = { sub: user.id, email: user.email, role: user.role };
-    const token = await this.jwtService.signAsync(payload, { expiresIn: this.jwtExpiresIn });
+    const token = await this.jwtService.signAsync(payload, {
+      expiresIn: this.jwtExpiresIn,
+    });
     return { token, expiresIn: this.jwtExpiresIn };
   }
 
@@ -38,7 +44,7 @@ export class UsersService {
       where: { email: payload.email },
     });
     if (existing) {
-      throw new HttpException('Email already registered', HttpStatus.CONFLICT);
+      throw new HttpException("Email already registered", HttpStatus.CONFLICT);
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
@@ -46,6 +52,7 @@ export class UsersService {
       data: {
         name: payload.name,
         email: payload.email,
+        phone: payload.phone,
         passwordHash,
         role: UserRole.OWNER,
       },
@@ -60,12 +67,12 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+      throw new HttpException("Invalid credentials", HttpStatus.UNAUTHORIZED);
     }
 
     const valid = await bcrypt.compare(payload.password, user.passwordHash);
     if (!valid) {
-      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+      throw new HttpException("Invalid credentials", HttpStatus.UNAUTHORIZED);
     }
 
     const auth = await this.generateToken(user);
@@ -84,7 +91,7 @@ export class UsersService {
       },
     });
     if (!user) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
     return this.sanitizeUser(user);
   }
@@ -95,10 +102,10 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
 
-    const newPassword = crypto.randomBytes(4).toString('hex');
+    const newPassword = crypto.randomBytes(4).toString("hex");
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
     await this.prisma.user.update({
@@ -106,8 +113,12 @@ export class UsersService {
       data: { passwordHash },
     });
 
-    await this.mailService.sendPasswordReset(user.email, newPassword, user.name);
+    await this.mailService.sendPasswordReset(
+      user.email,
+      newPassword,
+      user.name
+    );
 
-    return { message: 'Password reset email sent' };
+    return { message: "Password reset email sent" };
   }
 }
