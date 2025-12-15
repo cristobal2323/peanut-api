@@ -62,7 +62,7 @@ export default function SignupScreen() {
           email: values.email,
           password: values.password,
         });
-        login(data.user, data.token);
+        login(data.user, data.token, data.refreshToken);
         router.replace("/(tabs)");
       } catch (err: any) {
         setStatus(err?.message || t("auth.signup.defaultError"));

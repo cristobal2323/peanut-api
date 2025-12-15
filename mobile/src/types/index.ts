@@ -74,5 +74,7 @@ export interface AppNotification {
 export interface AuthResponse {
   token: string;
   expiresIn: string | number;
+  refreshToken?: string;
+  refreshExpiresIn?: string | number;
   user: User;
 }

@@ -16,6 +16,12 @@ export type SignupPayload = {
   phone?: string;
 };
 
+export type RefreshResponse = {
+  token: string;
+  expiresIn: string | number;
+  user: User;
+};
+
 export const authApi = {
   login: (payload: LoginPayload) =>
     http<AuthResponse>("/users/login", {
@@ -31,5 +37,11 @@ export const authApi = {
     http<{ message: string }>("/users/recover-password", {
       method: "POST",
       body: JSON.stringify({ email })
+    }),
+  refresh: (refreshToken: string) =>
+    http<RefreshResponse>("/users/refresh", {
+      method: "POST",
+      body: JSON.stringify({ refreshToken }),
+      skipAuth: true
     })
 };

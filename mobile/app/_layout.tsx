@@ -13,7 +13,6 @@ const RootLayoutNav = () => (
   <Stack screenOptions={{ headerShown: false }}>
     <Stack.Screen name="(auth)" />
     <Stack.Screen name="(tabs)" />
-    <Stack.Screen name="dog/[id]" options={{ presentation: "card" }} />
     <Stack.Screen name="dog/new" options={{ presentation: "modal" }} />
     <Stack.Screen
       name="report-sighting"

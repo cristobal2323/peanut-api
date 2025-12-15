@@ -40,6 +40,17 @@ export class UsersService {
     return { token, expiresIn: this.jwtExpiresIn };
   }
 
+  private async generateRefreshToken(user: { id: string; email: string }) {
+    const payload = { sub: user.id, email: user.email };
+    const refreshExpiresIn =
+      (process.env.JWT_REFRESH_EXPIRES_IN as SignOptions['expiresIn']) || '30d';
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      expiresIn: refreshExpiresIn,
+      secret: process.env.JWT_SECRET || 'dev-secret',
+    });
+    return { refreshToken, refreshExpiresIn };
+  }
+
   async signup(payload: SignupDto, lang?: string) {
     const existing = await this.prisma.user.findUnique({
       where: { email: payload.email },
@@ -83,9 +94,11 @@ export class UsersService {
     }
 
     const auth = await this.generateToken(user);
+    const refresh = await this.generateRefreshToken(user);
 
     return {
       ...auth,
+      ...refresh,
       user: this.sanitizeUser(user),
     };
   }
@@ -127,5 +140,23 @@ export class UsersService {
     );
 
     return { message: t(lang, "PASSWORD_RESET_SENT") };
+  }
+
+  async refresh(refreshToken: string, lang?: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_SECRET || "dev-secret"
+      });
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub }
+      });
+      if (!user) {
+        throw new HttpException(t(lang, "USER_NOT_FOUND"), HttpStatus.NOT_FOUND);
+      }
+      const auth = await this.generateToken(user);
+      return { ...auth, user: this.sanitizeUser(user) };
+    } catch {
+      throw new HttpException(t(lang, "INVALID_CREDENTIALS"), HttpStatus.UNAUTHORIZED);
+    }
   }
 }

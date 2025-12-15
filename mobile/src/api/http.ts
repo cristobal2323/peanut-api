@@ -1,8 +1,10 @@
 import { usePreferencesStore } from "../store/preferences";
+import { useAuthStore } from "../store/auth";
+import { AuthResponse } from "../types";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
-type Options = RequestInit & { token?: string };
+type Options = RequestInit & { token?: string; skipAuth?: boolean; _retry?: boolean };
 
 export async function http<T>(path: string, options: Options = {}): Promise<T> {
   const headers: Record<string, string> = {
@@ -11,8 +13,10 @@ export async function http<T>(path: string, options: Options = {}): Promise<T> {
     ...(options.headers as Record<string, string> | undefined)
   };
 
-  if (options.token) {
-    headers.Authorization = `Bearer ${options.token}`;
+  const authState = useAuthStore.getState();
+  const bearer = options.token || (options.skipAuth ? undefined : authState.token);
+  if (bearer) {
+    headers.Authorization = `Bearer ${bearer}`;
   }
 
   const res = await fetch(`${API_URL}${path}`, {
@@ -24,6 +28,37 @@ export async function http<T>(path: string, options: Options = {}): Promise<T> {
   const data = text ? JSON.parse(text) : null;
 
   if (!res.ok) {
+    // Attempt refresh on 401 once
+    if (
+      res.status === 401 &&
+      !options._retry &&
+      !options.skipAuth &&
+      authState.refreshToken
+    ) {
+      try {
+        const refreshed = await fetch(`${API_URL}/users/refresh`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept-Language": headers["Accept-Language"] || "es"
+          },
+          body: JSON.stringify({ refreshToken: authState.refreshToken })
+        })
+          .then(async (r) => {
+            const txt = await r.text();
+            const json = txt ? JSON.parse(txt) : null;
+            if (!r.ok) {
+              throw new Error(json?.message || r.statusText);
+            }
+            return json as AuthResponse;
+          });
+        useAuthStore.getState().login(refreshed.user, refreshed.token, authState.refreshToken);
+        return http<T>(path, { ...options, _retry: true });
+      } catch (err) {
+        useAuthStore.getState().logout();
+      }
+    }
+
     const message = data?.message || res.statusText;
     throw new Error(Array.isArray(message) ? message[0] : message);
   }

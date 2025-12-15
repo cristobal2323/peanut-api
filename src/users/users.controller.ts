@@ -4,6 +4,7 @@ import { UsersService } from './users.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { RecoverPasswordDto } from './dto/recover-password.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @Controller('users')
 export class UsersController {
@@ -19,6 +20,12 @@ export class UsersController {
   @Public()
   login(@Body() body: LoginDto, @Headers('accept-language') lang?: string) {
     return this.usersService.login(body, lang);
+  }
+
+  @Post('refresh')
+  @Public()
+  refresh(@Body() body: RefreshTokenDto, @Headers('accept-language') lang?: string) {
+    return this.usersService.refresh(body.refreshToken, lang);
   }
 
   @Post('recover-password')

@@ -49,7 +49,7 @@ export default function LoginScreen() {
       setStatus(null);
       try {
         const data = await mutation.mutateAsync(values);
-        login(data.user, data.token);
+        login(data.user, data.token, data.refreshToken);
         router.replace("/(tabs)");
       } catch (err: any) {
         setStatus(err?.message || t("auth.login.defaultError"));
