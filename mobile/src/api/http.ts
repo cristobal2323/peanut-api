@@ -7,6 +7,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 type Options = RequestInit & { token?: string; skipAuth?: boolean; _retry?: boolean };
 
 export async function http<T>(path: string, options: Options = {}): Promise<T> {
+  const debug = __DEV__;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Accept-Language": usePreferencesStore.getState().locale,
@@ -19,6 +20,13 @@ export async function http<T>(path: string, options: Options = {}): Promise<T> {
     headers.Authorization = `Bearer ${bearer}`;
   }
 
+  if (debug) {
+    console.log("[HTTP] ->", path, options.method ?? "GET", {
+      headers,
+      body: options.body
+    });
+  }
+
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers
@@ -28,6 +36,9 @@ export async function http<T>(path: string, options: Options = {}): Promise<T> {
   const data = text ? JSON.parse(text) : null;
 
   if (!res.ok) {
+    if (debug) {
+      console.log("[HTTP] <-", res.status, path, data);
+    }
     // Attempt refresh on 401 once
     if (
       res.status === 401 &&
@@ -61,6 +72,10 @@ export async function http<T>(path: string, options: Options = {}): Promise<T> {
 
     const message = data?.message || res.statusText;
     throw new Error(Array.isArray(message) ? message[0] : message);
+  }
+
+  if (debug) {
+    console.log("[HTTP] <-", res.status, path, data);
   }
 
   return data as T;
