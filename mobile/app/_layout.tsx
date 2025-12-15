@@ -13,6 +13,17 @@ const RootLayoutNav = () => (
   <Stack screenOptions={{ headerShown: false }}>
     <Stack.Screen name="(auth)" />
     <Stack.Screen name="(tabs)" />
+    <Stack.Screen
+      name="dog/[id]"
+      options={{
+        headerShown: true,
+        title: "Perfil",
+        headerStyle: { backgroundColor: PeanutTheme.colors.primary },
+        headerTintColor: "white",
+        headerTitleStyle: { color: "white" },
+        headerBackTitleVisible: false
+      }}
+    />
     <Stack.Screen name="dog/new" options={{ presentation: "modal" }} />
     <Stack.Screen
       name="report-sighting"
