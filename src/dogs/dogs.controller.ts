@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
 import { DogsService } from './dogs.service';
 import { CreateDogDto } from './dto/create-dog.dto';
 
@@ -7,13 +7,13 @@ export class DogsController {
   constructor(private readonly dogsService: DogsService) {}
 
   @Post()
-  create(@Body() body: CreateDogDto) {
-    return this.dogsService.create(body);
+  create(@Body() body: CreateDogDto, @Headers('accept-language') lang?: string) {
+    return this.dogsService.create(body, lang);
   }
 
   @Get(':id')
-  getById(@Param('id') id: string) {
-    return this.dogsService.getById(id);
+  getById(@Param('id') id: string, @Headers('accept-language') lang?: string) {
+    return this.dogsService.getById(id, lang);
   }
 }
 

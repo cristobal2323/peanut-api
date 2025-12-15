@@ -1,15 +1,16 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDogDto } from './dto/create-dog.dto';
+import { t } from '../i18n/messages';
 
 @Injectable()
 export class DogsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(payload: CreateDogDto) {
+  async create(payload: CreateDogDto, lang?: string) {
     const owner = await this.prisma.user.findUnique({ where: { id: payload.ownerId } });
     if (!owner) {
-      throw new HttpException('Owner not found', HttpStatus.BAD_REQUEST);
+      throw new HttpException(t(lang, 'OWNER_NOT_FOUND'), HttpStatus.BAD_REQUEST);
     }
 
     return this.prisma.dog.create({
@@ -28,7 +29,7 @@ export class DogsService {
     });
   }
 
-  async getById(id: string) {
+  async getById(id: string, lang?: string) {
     const dog = await this.prisma.dog.findUnique({
       where: { id },
       include: {
@@ -44,7 +45,7 @@ export class DogsService {
     });
 
     if (!dog) {
-      throw new HttpException('Dog not found', HttpStatus.NOT_FOUND);
+      throw new HttpException(t(lang, 'DOG_NOT_FOUND'), HttpStatus.NOT_FOUND);
     }
 
     return dog;

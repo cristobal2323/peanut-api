@@ -1,15 +1,16 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSightingDto } from './dto/create-sighting.dto';
+import { t } from '../i18n/messages';
 
 @Injectable()
 export class SightingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(payload: CreateSightingDto) {
+  async create(payload: CreateSightingDto, lang?: string) {
     const user = await this.prisma.user.findUnique({ where: { id: payload.userId } });
     if (!user) {
-      throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
+      throw new HttpException(t(lang, 'USER_NOT_FOUND'), HttpStatus.BAD_REQUEST);
     }
 
     const location = await this.prisma.location.create({

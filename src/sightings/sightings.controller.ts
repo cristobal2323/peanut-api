@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
 import { SightingsService } from './sightings.service';
 import { CreateSightingDto } from './dto/create-sighting.dto';
 
@@ -7,8 +7,8 @@ export class SightingsController {
   constructor(private readonly sightingsService: SightingsService) {}
 
   @Post()
-  create(@Body() body: CreateSightingDto) {
-    return this.sightingsService.create(body);
+  create(@Body() body: CreateSightingDto, @Headers('accept-language') lang?: string) {
+    return this.sightingsService.create(body, lang);
   }
 }
 

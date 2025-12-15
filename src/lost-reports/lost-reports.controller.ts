@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
 import { LostReportsService } from './lost-reports.service';
 import { CreateLostReportDto } from './dto/create-lost-report.dto';
 
@@ -7,8 +7,8 @@ export class LostReportsController {
   constructor(private readonly lostReportsService: LostReportsService) {}
 
   @Post()
-  create(@Body() body: CreateLostReportDto) {
-    return this.lostReportsService.create(body);
+  create(@Body() body: CreateLostReportDto, @Headers('accept-language') lang?: string) {
+    return this.lostReportsService.create(body, lang);
   }
 
   @Get('active')
@@ -17,7 +17,7 @@ export class LostReportsController {
   }
 
   @Get(':id')
-  getById(@Param('id') id: string) {
-    return this.lostReportsService.getById(id);
+  getById(@Param('id') id: string, @Headers('accept-language') lang?: string) {
+    return this.lostReportsService.getById(id, lang);
   }
 }

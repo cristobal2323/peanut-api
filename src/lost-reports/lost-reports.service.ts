@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { LostReportStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLostReportDto } from './dto/create-lost-report.dto';
+import { t } from '../i18n/messages';
 
 @Injectable()
 export class LostReportsService {
@@ -19,13 +20,13 @@ export class LostReportsService {
     });
   }
 
-  async create(payload: CreateLostReportDto) {
+  async create(payload: CreateLostReportDto, lang?: string) {
     const dog = await this.prisma.dog.findUnique({ where: { id: payload.dogId } });
     if (!dog) {
-      throw new HttpException('Dog not found', HttpStatus.BAD_REQUEST);
+      throw new HttpException(t(lang, 'DOG_NOT_FOUND'), HttpStatus.BAD_REQUEST);
     }
     if (dog.ownerId !== payload.ownerId) {
-      throw new HttpException('Owner mismatch for dog', HttpStatus.BAD_REQUEST);
+      throw new HttpException(t(lang, 'OWNER_MISMATCH_FOR_DOG'), HttpStatus.BAD_REQUEST);
     }
 
     const location = await this.resolveLocation(payload.lastSeenLatitude, payload.lastSeenLongitude);
@@ -59,7 +60,7 @@ export class LostReportsService {
     });
   }
 
-  async getById(id: string) {
+  async getById(id: string, lang?: string) {
     const report = await this.prisma.lostReport.findUnique({
       where: { id },
       include: {
@@ -76,7 +77,7 @@ export class LostReportsService {
       },
     });
     if (!report) {
-      throw new HttpException('Lost report not found', HttpStatus.NOT_FOUND);
+      throw new HttpException(t(lang, 'LOST_REPORT_NOT_FOUND'), HttpStatus.NOT_FOUND);
     }
     return report;
   }

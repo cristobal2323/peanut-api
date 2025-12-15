@@ -9,6 +9,7 @@ import { MailService } from "../mail/mail.service";
 import { SignupDto } from "./dto/signup.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RecoverPasswordDto } from "./dto/recover-password.dto";
+import { t } from "../i18n/messages";
 
 @Injectable()
 export class UsersService {
@@ -39,12 +40,12 @@ export class UsersService {
     return { token, expiresIn: this.jwtExpiresIn };
   }
 
-  async signup(payload: SignupDto) {
+  async signup(payload: SignupDto, lang?: string) {
     const existing = await this.prisma.user.findUnique({
       where: { email: payload.email },
     });
     if (existing) {
-      throw new HttpException("Email already registered", HttpStatus.CONFLICT);
+      throw new HttpException(t(lang, "EMAIL_REGISTERED"), HttpStatus.CONFLICT);
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
@@ -61,18 +62,24 @@ export class UsersService {
     return this.sanitizeUser(user);
   }
 
-  async login(payload: LoginDto) {
+  async login(payload: LoginDto, lang?: string) {
     const user = await this.prisma.user.findUnique({
       where: { email: payload.email },
     });
 
     if (!user) {
-      throw new HttpException("Invalid credentials", HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        t(lang, "INVALID_CREDENTIALS"),
+        HttpStatus.UNAUTHORIZED
+      );
     }
 
     const valid = await bcrypt.compare(payload.password, user.passwordHash);
     if (!valid) {
-      throw new HttpException("Invalid credentials", HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        t(lang, "INVALID_CREDENTIALS"),
+        HttpStatus.UNAUTHORIZED
+      );
     }
 
     const auth = await this.generateToken(user);
@@ -83,7 +90,7 @@ export class UsersService {
     };
   }
 
-  async getById(id: string) {
+  async getById(id: string, lang?: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       include: {
@@ -91,18 +98,18 @@ export class UsersService {
       },
     });
     if (!user) {
-      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+      throw new HttpException(t(lang, "USER_NOT_FOUND"), HttpStatus.NOT_FOUND);
     }
     return this.sanitizeUser(user);
   }
 
-  async recoverPassword(payload: RecoverPasswordDto) {
+  async recoverPassword(payload: RecoverPasswordDto, lang?: string) {
     const user = await this.prisma.user.findUnique({
       where: { email: payload.email },
     });
 
     if (!user) {
-      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+      throw new HttpException(t(lang, "USER_NOT_FOUND"), HttpStatus.NOT_FOUND);
     }
 
     const newPassword = crypto.randomBytes(4).toString("hex");
@@ -119,6 +126,6 @@ export class UsersService {
       user.name
     );
 
-    return { message: "Password reset email sent" };
+    return { message: t(lang, "PASSWORD_RESET_SENT") };
   }
 }

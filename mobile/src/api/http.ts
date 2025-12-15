@@ -1,3 +1,5 @@
+import { usePreferencesStore } from "../store/preferences";
+
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
 type Options = RequestInit & { token?: string };
@@ -5,6 +7,7 @@ type Options = RequestInit & { token?: string };
 export async function http<T>(path: string, options: Options = {}): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Accept-Language": usePreferencesStore.getState().locale,
     ...(options.headers as Record<string, string> | undefined)
   };
 
