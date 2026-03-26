@@ -21,7 +21,7 @@ const RootLayoutNav = () => (
         headerStyle: { backgroundColor: PeanutTheme.colors.primary },
         headerTintColor: "white",
         headerTitleStyle: { color: "white" },
-        headerBackTitleVisible: false
+        headerBackButtonDisplayMode: "minimal"
       }}
     />
     <Stack.Screen name="dog/new" options={{ presentation: "modal" }} />

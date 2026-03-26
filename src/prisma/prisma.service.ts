@@ -18,7 +18,7 @@ export class PrismaService
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
     });
-    super({ adapter: new PrismaPg(pool) });
+    super({ adapter: new PrismaPg(pool as any) });
   }
 
   async onModuleInit() {

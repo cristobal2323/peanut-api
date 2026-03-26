@@ -50,7 +50,6 @@ export default function ReportSightingScreen() {
           return;
         }
         mutation.mutate({
-          id: "",
           dogId: "",
           comment: values.comment,
           image: values.image,

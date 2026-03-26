@@ -70,12 +70,16 @@ export default function HomeScreen() {
 
   const activities = buildActivities(notifications, lostReports, heroDog?.name);
 
-  const mapRegion = lostReports[0]?.lastSeen ?? {
+  const defaultRegion = {
     latitude: 37.78825,
     longitude: -122.4324,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05
   };
+  const firstReport = lostReports[0]?.lastSeen;
+  const mapRegion = firstReport
+    ? { ...firstReport, latitudeDelta: 0.05, longitudeDelta: 0.05 }
+    : defaultRegion;
 
   return (
     <ScrollView
@@ -187,7 +191,7 @@ export default function HomeScreen() {
             <View key={activity.id}>
               <View style={styles.activityRow}>
                 <View style={styles.activityIcon}>
-                  <MaterialCommunityIcons name={activity.icon} size={20} color={PeanutTheme.colors.primary} />
+                  <MaterialCommunityIcons name={activity.icon as any} size={20} color={PeanutTheme.colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="bodyLarge">{activity.title}</Text>
@@ -456,5 +460,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
     paddingVertical: spacing.sm
+  },
+  sectionHeader: {
+    gap: spacing.xs
   }
 });

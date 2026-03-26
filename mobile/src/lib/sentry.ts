@@ -1,4 +1,4 @@
-import * as Sentry from "sentry-expo";
+import * as Sentry from "@sentry/react-native";
 import Constants from "expo-constants";
 
 let initialized = false;
@@ -11,7 +11,6 @@ export const initSentry = () => {
 
   Sentry.init({
     dsn,
-    enableInExpoDevelopment: true,
     debug: __DEV__,
     tracesSampleRate: 0.2
   });
@@ -19,7 +18,7 @@ export const initSentry = () => {
 
 export const captureError = (error: unknown, context?: Record<string, any>) => {
   if (!initialized) return;
-  Sentry.Native.captureException(error, (scope) => {
+  Sentry.captureException(error, (scope) => {
     if (context) {
       Object.entries(context).forEach(([key, value]) => {
         scope.setContext(key, { value });
