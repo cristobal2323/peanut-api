@@ -1,26 +1,25 @@
 import React from "react";
-import { ScrollView, View, StyleSheet, Image, Pressable } from "react-native";
+import {
+  ScrollView,
+  View,
+  StyleSheet,
+  Image,
+  Pressable,
+  Dimensions,
+} from "react-native";
 import { Link } from "expo-router";
-import MapView, { Marker } from "react-native-maps";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { Avatar, Text } from "react-native-paper";
+import { Avatar, Text, ProgressBar } from "react-native-paper";
 import { PrimaryButton } from "../../src/components/PrimaryButton";
-import { CardContainer } from "../../src/components/CardContainer";
 import { spacing, colors, radii, fonts } from "../../src/theme";
 import { useAuthStore } from "../../src/store/auth";
 import { useDogsStore } from "../../src/store/dogs";
 import { api } from "../../src/api/mockApi";
 import { queryKeys } from "../../src/lib/queryClient";
-import { AppNotification, DogStatus, LostReport } from "../../src/types";
+import { AppNotification, Dog, DogStatus, LostReport } from "../../src/types";
 
-type ActionTileProps = {
-  title: string;
-  subtitle: string;
-  icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
-  href: string;
-  tone?: "primary" | "neutral" | "danger";
-};
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
@@ -37,49 +36,16 @@ export default function HomeScreen() {
     queryFn: api.fetchNotifications,
   });
 
-  const actions: ActionTileProps[] = [
-    {
-      title: "Trufa ID",
-      subtitle: "Escanear nariz",
-      icon: "fingerprint",
-      href: "/(tabs)/scan",
-      tone: "primary",
-    },
-    {
-      title: "Registrar",
-      subtitle: "Nuevo perfil",
-      icon: "plus-circle-outline",
-      href: "/dog/new",
-      tone: "neutral",
-    },
-    {
-      title: "Reportar",
-      subtitle: "Perro perdido",
-      icon: "alert-decagram",
-      href: heroDog ? (`/dog/${heroDog.id}` as any) : "/dog/new",
-      tone: "danger",
-    },
-    {
-      title: "Encontre uno",
-      subtitle: "Reportar hallazgo",
-      icon: "dog",
-      href: "/(tabs)/feed" as const,
-      tone: "neutral",
-    },
-  ];
-
   const activities = buildActivities(notifications, lostReports, heroDog?.name);
 
-  const defaultRegion = {
-    latitude: 37.78825,
-    longitude: -122.4324,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  };
-  const firstReport = lostReports[0]?.lastSeen;
-  const mapRegion = firstReport
-    ? { ...firstReport, latitudeDelta: 0.05, longitudeDelta: 0.05 }
-    : defaultRegion;
+  // Protection checklist
+  const checks = [
+    { label: "Registro completo", done: true },
+    { label: "Fotos de perfil", done: !!heroDog?.photo },
+    { label: "Biometria Trufa", done: !!heroDog?.nosePhoto },
+    { label: "Contacto de emergencia", done: false },
+  ];
+  const progress = checks.filter((c) => c.done).length / checks.length;
 
   return (
     <ScrollView
@@ -87,111 +53,123 @@ export default function HomeScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Hero protection card */}
-      <CardContainer style={styles.heroCard} mode="contained">
-        <View style={styles.heroRow}>
-          <View style={styles.heroText}>
+      {/* ─── 1. HERO PROTECTION CARD ─── */}
+      <View style={styles.heroCard}>
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroTextBlock}>
             <View style={styles.protectedBadge}>
-              <MaterialCommunityIcons name="shield-check" size={14} color={colors.tertiary} />
-              <Text style={styles.protectedText}>Protegido</Text>
+              <MaterialCommunityIcons name="check-circle" size={16} color={colors.tertiary} />
+              <Text style={styles.protectedLabel}>Protegido</Text>
             </View>
-            <Text variant="titleMedium" style={styles.heroName}>
-              {heroDog ? heroDog.name : "Registra tu primer perro"}
+            <Text variant="headlineSmall" style={styles.heroTitle}>
+              {heroDog?.name ?? "Peanut"} esta seguro
             </Text>
-            <Text style={styles.muted}>
-              {heroDog
-                ? heroDog.breed ?? "Sin raza registrada"
-                : "Crea un perfil para activarle un ID seguro"}
+            <Text style={styles.heroDescription}>
+              Su perfil biometrico esta activo y validado por nuestra red de guardianes
             </Text>
-            {heroDog && (
-              <View style={styles.statusRow}>
-                <StatusPill status={heroDog.status} />
-              </View>
-            )}
-            <Link asChild href={heroDog ? `/dog/${heroDog.id}` : "/dog/new"}>
-              <PrimaryButton
-                mode="contained"
-                style={styles.heroButton}
-                contentStyle={{ paddingVertical: spacing.sm }}
-              >
-                {heroDog ? "Ver perfil" : "Registrar perro"}
-              </PrimaryButton>
-            </Link>
-          </View>
-          <View style={styles.heroAvatar}>
-            {heroDog?.photo ? (
-              <Image source={{ uri: heroDog.photo }} style={styles.dogImage} />
-            ) : (
-              <Avatar.Icon
-                icon="dog"
-                size={86}
-                style={{ backgroundColor: colors.primaryFixed }}
-                color={colors.primary}
-              />
-            )}
-          </View>
-        </View>
-      </CardContainer>
-
-      {/* Quick actions */}
-      <View style={styles.sectionHeader}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>Acciones rapidas</Text>
-      </View>
-      <View style={styles.actionsGrid}>
-        {actions.map((action) => (
-          <Link key={action.title} asChild href={action.href as any}>
-            <Pressable style={({ pressed }) => [styles.actionTile, tileTone(action.tone), pressed && styles.pressed]}>
-              <View style={[styles.actionIcon, iconTone(action.tone)]}>
-                <MaterialCommunityIcons
-                  name={action.icon}
-                  size={22}
-                  color={action.tone === "danger" ? colors.error : colors.primary}
-                />
-              </View>
-              <Text variant="titleSmall" style={styles.tileTitle}>{action.title}</Text>
-              <Text style={styles.muted}>{action.subtitle}</Text>
+            <Pressable style={styles.bioLink}>
+              <Text style={styles.bioLinkText}>Ver Perfil Biometrico</Text>
+              <MaterialCommunityIcons name="chevron-right" size={16} color={colors.primary} />
             </Pressable>
-          </Link>
-        ))}
+          </View>
+        </View>
+
+        {/* Hero dog image — large, bleeding right */}
+        <View style={styles.heroImageWrap}>
+          {heroDog?.photo ? (
+            <Image source={{ uri: heroDog.photo }} style={styles.heroImage} />
+          ) : (
+            <Avatar.Icon
+              icon="dog"
+              size={140}
+              style={{ backgroundColor: colors.primaryFixed }}
+              color={colors.primary}
+            />
+          )}
+        </View>
       </View>
 
-      {/* Lost dogs map */}
-      <CardContainer style={styles.mapCard}>
-        <View style={styles.mapHeader}>
-          <View>
-            <Text variant="titleMedium" style={styles.sectionTitle}>Perros perdidos</Text>
-            <Text style={styles.muted}>
-              {lostReports.length > 0
-                ? `${lostReports.length} alerta${lostReports.length > 1 ? "s" : ""} activas`
-                : "Sin alertas por ahora"}
+      {/* ─── 2. QUICK ACTION BUTTONS ─── */}
+      <View style={styles.quickActionsRow}>
+        <QuickAction
+          icon="fingerprint"
+          label="Trufa ID"
+          detail="98.4% Match"
+          href="/(tabs)/scan"
+          accent={colors.primary}
+        />
+        <QuickAction
+          icon="qrcode-scan"
+          label="Escanear Trufa"
+          href="/(tabs)/scan"
+          accent={colors.secondary}
+        />
+        <QuickAction
+          icon="alert-circle"
+          label="Reportar Perdido"
+          href={heroDog ? (`/dog/${heroDog.id}` as any) : "/dog/new"}
+          accent={colors.error}
+        />
+        <QuickAction
+          icon="dog"
+          label="Encontre un perro"
+          href="/(tabs)/feed"
+          accent={colors.tertiary}
+        />
+        <QuickAction
+          icon="account-group"
+          label="Comunidad"
+          href="/(tabs)/feed"
+          accent={colors.secondary}
+        />
+      </View>
+
+      {/* ─── 3. ZONE ALERT ─── */}
+      {lostReports.length > 0 && (
+        <View style={styles.alertCard}>
+          <View style={styles.alertDot} />
+          <MaterialCommunityIcons name="map-marker" size={20} color={colors.primary} />
+          <Text style={styles.alertText} numberOfLines={2}>
+            Posible coincidencia de {lostReports[0]?.dogName ?? "Golden Retriever"} a 2km
+          </Text>
+          <Pressable>
+            <Text style={styles.alertAction}>Ver ahora</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* ─── 4. PROTECTION STATUS ─── */}
+      <View style={styles.sectionCard}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Estado de Proteccion</Text>
+        <View style={styles.progressRow}>
+          <ProgressBar
+            progress={progress}
+            color={colors.primary}
+            style={styles.progressBar}
+          />
+          <Text style={styles.progressLabel}>{Math.round(progress * 100)}%</Text>
+        </View>
+        {checks.map((check) => (
+          <View key={check.label} style={styles.checkRow}>
+            <MaterialCommunityIcons
+              name={check.done ? "check-circle" : "clock-outline"}
+              size={18}
+              color={check.done ? colors.tertiary : colors.textMuted}
+            />
+            <Text style={[styles.checkLabel, !check.done && styles.checkPending]}>
+              {check.label}
             </Text>
           </View>
-          <Link asChild href="/(tabs)/feed">
-            <PrimaryButton mode="outlined" variant="secondary" gradient={false}>
-              Abrir mapa
-            </PrimaryButton>
-          </Link>
-        </View>
-        <View style={styles.mapShell}>
-          <MapView style={styles.map} initialRegion={mapRegion}>
-            {lostReports.map((report) => (
-              <Marker
-                key={report.id}
-                coordinate={report.lastSeen}
-                title={report.dogName}
-                description={report.description}
-                pinColor={colors.primary}
-              />
-            ))}
-          </MapView>
-        </View>
-      </CardContainer>
+        ))}
+        <Pressable style={styles.completeProfileBtn}>
+          <Text style={styles.completeProfileText}>Completar perfil</Text>
+          <MaterialCommunityIcons name="arrow-right" size={16} color={colors.primary} />
+        </Pressable>
+      </View>
 
-      {/* Activity feed */}
-      <CardContainer style={styles.activityCard}>
-        <View style={styles.sectionHeader}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Actividad reciente</Text>
-        </View>
+      {/* ─── 5. RECENT ACTIVITY ─── */}
+      <View style={styles.sectionCard}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Actividad Reciente</Text>
         {activities.length === 0 ? (
           <View style={styles.emptyState}>
             <MaterialCommunityIcons name="sleep" size={22} color={colors.textMuted} />
@@ -201,92 +179,169 @@ export default function HomeScreen() {
           activities.map((activity, idx) => (
             <View key={activity.id}>
               <View style={styles.activityRow}>
-                <View style={styles.activityIcon}>
+                <View style={[styles.activityIcon, { backgroundColor: `${colors.primary}12` }]}>
                   <MaterialCommunityIcons name={activity.icon as any} size={20} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text variant="bodyLarge" style={{ color: colors.onSurface }}>{activity.title}</Text>
-                  <Text style={styles.muted}>{activity.message}</Text>
-                  <Text style={styles.time}>{activity.timeAgo}</Text>
+                  <Text variant="bodyMedium" style={styles.activityTitle}>{activity.title}</Text>
+                  <Text style={styles.activityMeta}>{activity.message}</Text>
+                  <Text style={styles.activityTime}>{activity.timeAgo}</Text>
                 </View>
               </View>
               {idx < activities.length - 1 && <View style={styles.separator} />}
             </View>
           ))
         )}
-      </CardContainer>
+      </View>
+
+      {/* ─── 6. MY DOGS ─── */}
+      <View style={styles.sectionCard}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Mis Perros</Text>
+        {dogs.map((dog) => (
+          <Link key={dog.id} href={`/dog/${dog.id}` as any} asChild>
+            <Pressable style={styles.dogListItem}>
+              <View style={styles.dogListAvatar}>
+                {dog.photo ? (
+                  <Image source={{ uri: dog.photo }} style={styles.dogListImage} />
+                ) : (
+                  <Avatar.Text
+                    size={48}
+                    label={dog.name.charAt(0)}
+                    style={{ backgroundColor: colors.primaryFixed }}
+                    labelStyle={{ color: colors.primary }}
+                  />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="titleSmall" style={{ color: colors.onSurface }}>{dog.name}</Text>
+                <View style={styles.dogStatusRow}>
+                  {dog.status === "normal" ? (
+                    <>
+                      <MaterialCommunityIcons name="shield-check" size={14} color={colors.tertiary} />
+                      <Text style={styles.dogStatusOk}>Protegido</Text>
+                    </>
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="alert" size={14} color={colors.error} />
+                      <Text style={styles.dogStatusLost}>Perdido</Text>
+                    </>
+                  )}
+                  {!dog.nosePhoto && (
+                    <View style={styles.missingTrufaBadge}>
+                      <MaterialCommunityIcons name="alert-circle" size={12} color={colors.primary} />
+                      <Text style={styles.missingTrufaText}>Falta Trufa</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textMuted} />
+            </Pressable>
+          </Link>
+        ))}
+      </View>
+
+      {/* ─── 7. EDUCATIONAL CARD ─── */}
+      <View style={styles.eduCard}>
+        <MaterialCommunityIcons name="lightbulb-outline" size={28} color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <Text variant="titleSmall" style={{ color: colors.onSurface }}>
+            Como funciona la Trufa?
+          </Text>
+          <Text style={styles.eduDescription}>
+            La nariz de tu perro es unica. Usala como su huella digital
+          </Text>
+        </View>
+        <Pressable style={styles.eduBtn}>
+          <Text style={styles.eduBtnText}>Saber mas</Text>
+          <MaterialCommunityIcons name="arrow-right" size={14} color={colors.primary} />
+        </Pressable>
+      </View>
+
+      {/* ─── 8. NEARBY LOST DOGS ─── */}
+      {lostReports.length > 0 && (
+        <View style={styles.sectionCard}>
+          <View style={styles.nearbyHeader}>
+            <Text variant="titleMedium" style={styles.sectionTitle}>Cerca de ti</Text>
+            <Link href="/(tabs)/feed">
+              <Text style={styles.seeAllLink}>Ver todos</Text>
+            </Link>
+          </View>
+          {lostReports.slice(0, 2).map((report) => (
+            <Link key={report.id} href={`/dog/${report.dogId}` as any} asChild>
+              <Pressable style={styles.nearbyCard}>
+                <View style={styles.nearbyImageWrap}>
+                  {report.images?.[0] ? (
+                    <Image source={{ uri: report.images[0] }} style={styles.nearbyImage} />
+                  ) : (
+                    <View style={[styles.nearbyImage, { backgroundColor: colors.surfaceContainerHigh, alignItems: "center", justifyContent: "center" }]}>
+                      <MaterialCommunityIcons name="dog" size={32} color={colors.textMuted} />
+                    </View>
+                  )}
+                  <View style={styles.nearbyDistanceBadge}>
+                    <MaterialCommunityIcons name="near-me" size={10} color={colors.onPrimary} />
+                    <Text style={styles.nearbyDistanceText}>A 500m</Text>
+                  </View>
+                </View>
+                <View style={styles.nearbyInfo}>
+                  <Text variant="titleSmall" style={{ color: colors.onSurface }}>{report.dogName}</Text>
+                  <View style={styles.nearbyLostBadge}>
+                    <Text style={styles.nearbyLostText}>Perdido</Text>
+                  </View>
+                  <Text style={styles.nearbyTime}>Hace 40min</Text>
+                </View>
+                <MaterialCommunityIcons name="eye-outline" size={20} color={colors.textMuted} />
+              </Pressable>
+            </Link>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
 
-const statusLabel: Record<DogStatus, { label: string; background: string; color: string }> = {
-  normal: { label: "Seguro", background: "rgba(62, 172, 112, 0.12)", color: colors.tertiary },
-  lost: { label: "Modo perdido", background: "rgba(186, 26, 26, 0.12)", color: colors.error },
+/* ─── QUICK ACTION BUTTON ─── */
+type QuickActionProps = {
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
+  label: string;
+  detail?: string;
+  href: string;
+  accent: string;
 };
 
-const StatusPill = ({ status }: { status: DogStatus }) => {
-  const config = statusLabel[status];
-  return (
-    <View style={[styles.statusPill, { backgroundColor: config.background }]}>
-      <MaterialCommunityIcons
-        name={status === "lost" ? "alert" : "check-circle"}
-        color={config.color}
-        size={14}
-      />
-      <Text style={[styles.statusText, { color: config.color }]}>{config.label}</Text>
-    </View>
-  );
-};
+const QuickAction = ({ icon, label, detail, href, accent }: QuickActionProps) => (
+  <Link href={href as any} asChild>
+    <Pressable style={styles.quickAction}>
+      <View style={[styles.quickActionIcon, { backgroundColor: `${accent}14` }]}>
+        <MaterialCommunityIcons name={icon} size={22} color={accent} />
+      </View>
+      <Text style={styles.quickActionLabel} numberOfLines={1}>{label}</Text>
+      {detail && <Text style={styles.quickActionDetail}>{detail}</Text>}
+    </Pressable>
+  </Link>
+);
 
-const tileTone = (tone: ActionTileProps["tone"]) => {
-  switch (tone) {
-    case "primary":
-      return styles.tilePrimary;
-    case "danger":
-      return styles.tileDanger;
-    default:
-      return styles.tileNeutral;
-  }
-};
-
-const iconTone = (tone: ActionTileProps["tone"]) => {
-  switch (tone) {
-    case "primary":
-      return styles.iconPrimary;
-    case "danger":
-      return styles.iconDanger;
-    default:
-      return styles.iconNeutral;
-  }
-};
-
+/* ─── HELPERS ─── */
 const buildActivities = (
   notifications: AppNotification[],
   reports: LostReport[],
   dogName?: string
 ) => {
   const items = [
-    ...notifications.map((notification) => ({
-      id: notification.id,
-      title: notification.title,
-      message: notification.message,
-      icon:
-        notification.type === "match"
-          ? "paw"
-          : notification.type === "sighting"
-            ? "map-marker"
-            : "bell-outline",
-      timeAgo: formatTimeAgo(notification.createdAt),
+    ...notifications.map((n) => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      icon: n.type === "match" ? "paw" : n.type === "sighting" ? "map-marker" : "bell-outline",
+      timeAgo: formatTimeAgo(n.createdAt),
     })),
-    ...reports.map((report) => ({
-      id: `report-${report.id}`,
-      title: `Alerta de ${report.dogName}`,
-      message: report.description ?? "Avistamiento reciente.",
+    ...reports.map((r) => ({
+      id: `report-${r.id}`,
+      title: `Alerta de ${r.dogName}`,
+      message: r.description ?? "Avistamiento reciente.",
       icon: "alert",
-      timeAgo: formatTimeAgo(report.lastSeen.time ?? new Date().toISOString()),
+      timeAgo: formatTimeAgo(r.lastSeen.time ?? new Date().toISOString()),
     })),
   ];
-
   if (dogName) {
     items.push({
       id: "status",
@@ -296,199 +351,251 @@ const buildActivities = (
       timeAgo: "hace unos minutos",
     });
   }
-
-  return items.slice(0, 4);
+  return items.slice(0, 3);
 };
 
 const formatTimeAgo = (dateStr: string) => {
   const now = Date.now();
   const date = new Date(dateStr).getTime();
-  const diffMinutes = Math.max(0, Math.floor((now - date) / 60000));
-  if (diffMinutes < 1) return "justo ahora";
-  if (diffMinutes < 60) return `hace ${diffMinutes} min`;
-  const hours = Math.floor(diffMinutes / 60);
-  if (hours < 24) return `hace ${hours} h`;
-  const days = Math.floor(hours / 24);
-  return `hace ${days} d`;
+  const mins = Math.max(0, Math.floor((now - date) / 60000));
+  if (mins < 1) return "justo ahora";
+  if (mins < 60) return `hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `hace ${hrs} h`;
+  return `hace ${Math.floor(hrs / 24)} d`;
 };
 
+/* ─── STYLES ─── */
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
     paddingBottom: spacing.xxl,
     gap: spacing.lg,
   },
+
+  // ── Hero
   heroCard: {
-    padding: spacing.lg,
-    marginTop: 0,
     backgroundColor: colors.surfaceContainerLowest,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    borderRadius: radii.xxl,
+    padding: spacing.xl,
+    paddingBottom: 0,
+    overflow: "hidden",
+    shadowColor: colors.onSurface,
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
   },
-  heroRow: {
+  heroTopRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
+    alignItems: "flex-start",
   },
-  heroText: {
+  heroTextBlock: {
     flex: 1,
     gap: spacing.xs,
-  },
-  heroName: {
-    color: colors.onSurface,
-    fontFamily: fonts.heading,
   },
   protectedBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     backgroundColor: "rgba(62, 172, 112, 0.12)",
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: radii.full,
     alignSelf: "flex-start",
   },
-  protectedText: {
+  protectedLabel: {
     color: colors.tertiary,
     fontSize: 12,
     fontFamily: fonts.bodySemiBold,
   },
-  heroButton: {
-    alignSelf: "flex-start",
-    marginTop: spacing.sm,
-    borderRadius: radii.full,
+  heroTitle: {
+    color: colors.onSurface,
+    fontFamily: fonts.heading,
+    marginTop: spacing.xs,
   },
-  heroAvatar: {
-    backgroundColor: colors.surfaceContainerLow,
-    padding: spacing.xs,
-    borderRadius: radii.xl,
+  heroDescription: {
+    color: colors.textSecondary,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 20,
   },
-  dogImage: {
-    width: 94,
-    height: 94,
-    borderRadius: radii.lg,
+  bioLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    marginTop: spacing.xs,
   },
-  statusRow: {
+  bioLinkText: {
+    color: colors.primary,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+  },
+  heroImageWrap: {
+    alignItems: "center",
+    marginTop: spacing.md,
+  },
+  heroImage: {
+    width: SCREEN_WIDTH - spacing.lg * 2 - spacing.xl * 2,
+    height: 200,
+    borderTopLeftRadius: radii.xxl,
+    borderTopRightRadius: radii.xxl,
+  },
+
+  // ── Quick Actions (horizontal scroll row)
+  quickActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  quickAction: {
+    alignItems: "center",
+    gap: 4,
+    width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 4) / 5,
+  },
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickActionLabel: {
+    fontSize: 10,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.onSurface,
+    textAlign: "center",
+  },
+  quickActionDetail: {
+    fontSize: 9,
+    fontFamily: fonts.body,
+    color: colors.primary,
+    textAlign: "center",
+  },
+
+  // ── Zone Alert
+  alertCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    marginTop: spacing.xs,
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.primaryFixed,
+    borderRadius: radii.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: radii.full,
+  alertDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
   },
-  statusText: {
-    fontWeight: "600",
-    fontSize: 13,
-    fontFamily: fonts.bodySemiBold,
-  },
-  muted: {
-    color: colors.textMuted,
+  alertText: {
+    flex: 1,
+    color: colors.onSurface,
     fontFamily: fonts.body,
+    fontSize: 13,
   },
-  sectionHeader: {
-    gap: spacing.xs,
+  alertAction: {
+    color: colors.primary,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+  },
+
+  // ── Section Card (reused)
+  sectionCard: {
+    backgroundColor: colors.surfaceContainerLowest,
+    marginHorizontal: spacing.lg,
+    borderRadius: radii.xxl,
+    padding: spacing.xl,
+    gap: spacing.md,
+    shadowColor: colors.onSurface,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
   sectionTitle: {
     color: colors.onSurface,
     fontFamily: fonts.headingMedium,
   },
-  actionsGrid: {
+
+  // ── Protection Progress
+  progressRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
+    alignItems: "center",
+    gap: spacing.sm,
   },
-  actionTile: {
-    flexBasis: "47%",
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    gap: spacing.xs,
-    shadowColor: colors.onSurface,
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1,
-  },
-  tileTitle: {
-    color: colors.onSurface,
-  },
-  tilePrimary: {
-    backgroundColor: colors.primaryFixed,
-    borderWidth: 0,
-  },
-  tileNeutral: {
-    backgroundColor: colors.surfaceContainerLowest,
-  },
-  tileDanger: {
-    backgroundColor: colors.errorContainer,
-    borderWidth: 0,
-  },
-  iconPrimary: {
-    backgroundColor: "rgba(162, 63, 0, 0.10)",
-  },
-  iconNeutral: {
+  progressBar: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: colors.surfaceContainerHigh,
   },
-  iconDanger: {
-    backgroundColor: "rgba(186, 26, 26, 0.10)",
+  progressLabel: {
+    color: colors.primary,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
   },
-  actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
-  },
-  mapCard: {
-    padding: spacing.lg,
-  },
-  mapHeader: {
+  checkRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
-  mapShell: {
-    borderRadius: radii.lg,
-    overflow: "hidden",
+  checkLabel: {
+    color: colors.onSurface,
+    fontFamily: fonts.body,
+    fontSize: 14,
   },
-  map: {
-    height: 180,
-    width: "100%",
+  checkPending: {
+    color: colors.textMuted,
   },
-  activityCard: {
-    padding: spacing.lg,
+  completeProfileBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    marginTop: spacing.xs,
   },
+  completeProfileText: {
+    color: colors.primary,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+  },
+
+  // ── Activity
   activityRow: {
     flexDirection: "row",
     gap: spacing.md,
-    paddingVertical: spacing.sm,
+    alignItems: "flex-start",
   },
   activityIcon: {
     width: 40,
     height: 40,
     borderRadius: radii.md,
-    backgroundColor: colors.surfaceContainerLow,
     alignItems: "center",
     justifyContent: "center",
   },
-  time: {
+  activityTitle: {
+    color: colors.onSurface,
+    fontFamily: fonts.bodyMedium,
+  },
+  activityMeta: {
     color: colors.textMuted,
-    fontSize: 12,
     fontFamily: fonts.body,
+    fontSize: 13,
+  },
+  activityTime: {
+    color: colors.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    marginTop: 2,
   },
   separator: {
     height: 1,
@@ -500,5 +607,152 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
     paddingVertical: spacing.sm,
+  },
+  muted: {
+    color: colors.textMuted,
+    fontFamily: fonts.body,
+  },
+
+  // ── My Dogs
+  dogListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radii.xl,
+    padding: spacing.md,
+  },
+  dogListAvatar: {
+    borderRadius: radii.lg,
+    overflow: "hidden",
+  },
+  dogListImage: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.lg,
+  },
+  dogStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  dogStatusOk: {
+    color: colors.tertiary,
+    fontSize: 12,
+    fontFamily: fonts.bodySemiBold,
+  },
+  dogStatusLost: {
+    color: colors.error,
+    fontSize: 12,
+    fontFamily: fonts.bodySemiBold,
+  },
+  missingTrufaBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    marginLeft: spacing.sm,
+    backgroundColor: colors.primaryFixed,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radii.full,
+  },
+  missingTrufaText: {
+    color: colors.primary,
+    fontSize: 10,
+    fontFamily: fonts.bodySemiBold,
+  },
+
+  // ── Educational Card
+  eduCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radii.xxl,
+    padding: spacing.xl,
+  },
+  eduDescription: {
+    color: colors.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    marginTop: 2,
+  },
+  eduBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  eduBtnText: {
+    color: colors.primary,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+  },
+
+  // ── Nearby Lost Dogs
+  nearbyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  seeAllLink: {
+    color: colors.primary,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+  },
+  nearbyCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radii.xl,
+    padding: spacing.md,
+  },
+  nearbyImageWrap: {
+    position: "relative",
+  },
+  nearbyImage: {
+    width: 56,
+    height: 56,
+    borderRadius: radii.lg,
+  },
+  nearbyDistanceBadge: {
+    position: "absolute",
+    bottom: -4,
+    right: -4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: radii.full,
+  },
+  nearbyDistanceText: {
+    color: colors.onPrimary,
+    fontSize: 8,
+    fontFamily: fonts.bodySemiBold,
+  },
+  nearbyInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  nearbyLostBadge: {
+    backgroundColor: "rgba(186, 26, 26, 0.12)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radii.full,
+    alignSelf: "flex-start",
+  },
+  nearbyLostText: {
+    color: colors.error,
+    fontSize: 10,
+    fontFamily: fonts.bodySemiBold,
+  },
+  nearbyTime: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontFamily: fonts.body,
   },
 });
