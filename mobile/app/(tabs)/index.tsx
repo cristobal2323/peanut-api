@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ScrollView,
   View,
@@ -6,6 +6,7 @@ import {
   Image,
   Pressable,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { Link } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -20,12 +21,13 @@ import { queryKeys } from "../../src/lib/queryClient";
 import { LostReport } from "../../src/types";
 
 const SCREEN_W = Dimensions.get("window").width;
-const CARD_H = 340;
+const CARD_H = 380;
 
 export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
   const dogs = useDogsStore((state) => state.dogs);
-  const heroDog = dogs[0];
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const heroDog = dogs[selectedIdx] ?? dogs[0];
   const hasDogs = dogs.length > 0;
 
   const { data: lostReports = [] } = useQuery({
@@ -43,32 +45,29 @@ export default function HomeScreen() {
           HERO CARD
          ════════════════════════════════════════════ */}
       <View style={styles.heroCard}>
-        {/* Gradient overlay for text readability */}
+        {/* Full-bleed dog image */}
+        {heroDog?.photo ? (
+          <HeroImage uri={heroDog.photo} />
+        ) : (
+          <View style={styles.heroImgPlaceholder}>
+            <MaterialCommunityIcons name="dog" size={80} color={colors.outlineVariant} />
+          </View>
+        )}
+
+        {/* Bottom gradient for text readability */}
         <LinearGradient
-          colors={["rgba(251,243,228,0.95)", "rgba(251,243,228,0.4)", "transparent"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+          colors={["transparent", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.75)"]}
+          locations={[0, 0.4, 1]}
           style={styles.heroGradient}
           pointerEvents="none"
         />
 
-        {/* Dog image — right side */}
-        <View style={styles.heroImgContainer}>
-          {heroDog?.photo ? (
-            <Image source={{ uri: heroDog.photo }} style={styles.heroImg} />
-          ) : (
-            <View style={styles.heroImgPlaceholder}>
-              <MaterialCommunityIcons name="dog" size={80} color={colors.outlineVariant} />
-            </View>
-          )}
-        </View>
-
-        {/* Text content — left side */}
+        {/* Content overlay */}
         <View style={styles.heroBody}>
           {hasDogs ? (
             <>
               <View style={styles.badgeGreen}>
-                <MaterialCommunityIcons name="shield-check" size={12} color={colors.onTertiary} />
+                <MaterialCommunityIcons name="shield-check" size={12} color="#fff" />
                 <Text style={styles.badgeGreenText}>PROTEGIDO</Text>
               </View>
               <Text style={styles.heroHeadline}>{heroDog.name}</Text>
@@ -78,6 +77,7 @@ export default function HomeScreen() {
               <Link href={`/dog/${heroDog.id}` as any} asChild>
                 <Pressable style={styles.heroCta}>
                   <Text style={styles.heroCtaText}>Ver perfil biometrico</Text>
+                  <MaterialCommunityIcons name="arrow-right" size={16} color="#fff" />
                 </Pressable>
               </Link>
             </>
@@ -88,11 +88,12 @@ export default function HomeScreen() {
               </View>
               <Text style={styles.heroHeadline}>Registra a tu{"\n"}perro</Text>
               <Text style={styles.heroParagraph}>
-                Crea su perfil y registra su trufa para ayudar a identificarlo de forma unica y segura.
+                Crea su perfil y registra su trufa para identificarlo de forma unica y segura.
               </Text>
               <Link href="/dog/new" asChild>
                 <Pressable style={styles.heroCta}>
                   <Text style={styles.heroCtaText}>Registrar perro</Text>
+                  <MaterialCommunityIcons name="arrow-right" size={16} color="#fff" />
                 </Pressable>
               </Link>
             </>
@@ -110,20 +111,22 @@ export default function HomeScreen() {
           contentContainerStyle={styles.dogChipsWrap}
         >
           {dogs.map((dog, i) => (
-            <Link key={dog.id} href={`/dog/${dog.id}` as any} asChild>
-              <Pressable style={StyleSheet.flatten([styles.dogChip, i === 0 && styles.dogChipActive])}>
-                {dog.photo ? (
-                  <Image source={{ uri: dog.photo }} style={styles.dogChipAvatar} />
-                ) : (
-                  <View style={styles.dogChipAvatarFallback}>
-                    <Text style={styles.dogChipInitial}>{dog.name.charAt(0)}</Text>
-                  </View>
-                )}
-                <Text style={i === 0 ? styles.dogChipNameActive : styles.dogChipName}>
-                  {dog.name}
-                </Text>
-              </Pressable>
-            </Link>
+            <Pressable
+              key={dog.id}
+              onPress={() => setSelectedIdx(i)}
+              style={[styles.dogChip, i === selectedIdx && styles.dogChipActive]}
+            >
+              {dog.photo ? (
+                <Image source={{ uri: dog.photo }} style={styles.dogChipAvatar} />
+              ) : (
+                <View style={styles.dogChipAvatarFallback}>
+                  <Text style={styles.dogChipInitial}>{dog.name.charAt(0)}</Text>
+                </View>
+              )}
+              <Text style={i === selectedIdx ? styles.dogChipNameActive : styles.dogChipName}>
+                {dog.name}
+              </Text>
+            </Pressable>
           ))}
         </ScrollView>
       )}
@@ -182,6 +185,36 @@ export default function HomeScreen() {
     </ScrollView>
   );
 }
+
+/* ── HERO IMAGE with loading state ── */
+const HeroImage = ({ uri }: { uri: string }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <View style={styles.heroImgPlaceholder}>
+        <MaterialCommunityIcons name="dog" size={80} color={colors.outlineVariant} />
+      </View>
+    );
+  }
+
+  return (
+    <>
+      {loading && (
+        <View style={styles.heroImgPlaceholder}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
+      <Image
+        source={{ uri }}
+        style={[styles.heroImg, loading && { position: "absolute", opacity: 0 }]}
+        onLoad={() => setLoading(false)}
+        onError={() => setError(true)}
+      />
+    </>
+  );
+};
 
 /* ── ACTION ITEM ── */
 const ActionItem = ({
@@ -272,55 +305,47 @@ const styles = StyleSheet.create({
     marginTop: 8,
     height: CARD_H,
     borderRadius: 32,
-    backgroundColor: colors.surfaceContainerLow,
+    backgroundColor: colors.surfaceContainerHigh,
     overflow: "hidden",
   },
   heroGradient: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 1,
   },
-  heroImgContainer: {
-    position: "absolute",
-    right: 0,
-    bottom: 0,
-    width: SCREEN_W * 0.48,
-    height: CARD_H,
-    zIndex: 0,
-  },
   heroImg: {
     width: "100%",
     height: "100%",
     resizeMode: "cover",
-    borderTopLeftRadius: 60,
   },
   heroImgPlaceholder: {
-    width: "100%",
-    height: "100%",
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surfaceContainerHigh,
-    borderTopLeftRadius: 60,
   },
   heroBody: {
-    position: "relative",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     zIndex: 2,
-    paddingTop: 28,
-    paddingLeft: 24,
-    paddingRight: SCREEN_W * 0.42,
-    gap: 6,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+    gap: 4,
   },
   badgeGreen: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: colors.tertiaryContainer,
+    backgroundColor: "rgba(62,172,112,0.85)",
     alignSelf: "flex-start",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 100,
+    marginBottom: 4,
   },
   badgeGreenText: {
-    color: colors.onTertiaryContainer,
+    color: "#fff",
     fontSize: 9,
     fontFamily: fonts.bodySemiBold,
     letterSpacing: 0.8,
@@ -331,6 +356,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 100,
+    marginBottom: 4,
   },
   badgeOrangeText: {
     color: "#fff",
@@ -340,25 +366,29 @@ const styles = StyleSheet.create({
   },
   heroHeadline: {
     fontFamily: fonts.heading,
-    fontSize: 28,
-    lineHeight: 34,
-    color: colors.onSurface,
-    marginTop: 8,
+    fontSize: 32,
+    lineHeight: 38,
+    color: "#fff",
   },
   heroParagraph: {
     fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 19,
-    color: colors.textSecondary,
+    color: "rgba(255,255,255,0.85)",
     marginTop: 2,
   },
   heroCta: {
     alignSelf: "flex-start",
-    marginTop: 14,
+    marginTop: 12,
     borderRadius: 100,
-    backgroundColor: colors.primary,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
     paddingVertical: 10,
     paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   heroCtaText: {
     color: "#fff",
@@ -393,6 +423,9 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   dogChipAvatarFallback: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: colors.surfaceContainerHigh,
     alignItems: "center",
     justifyContent: "center",
@@ -408,6 +441,7 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
   dogChipNameActive: {
+    fontSize: 13,
     color: colors.primary,
     fontFamily: fonts.bodySemiBold,
   },
