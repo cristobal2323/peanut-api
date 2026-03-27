@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 import { Tabs, Link, useNavigation } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -96,6 +96,7 @@ const TabHeader = ({ title, routeName }: { title?: string; routeName: string }) 
   const unread = notifications.filter((n) => !n.read).length;
 
   const showBack = navigation.canGoBack() && !ROOT_TABS.includes(routeName);
+  const isHome = routeName === "index";
 
   return (
     <View style={[styles.header, { paddingTop: Math.max(insets.top, spacing.sm) }]}>
@@ -103,12 +104,27 @@ const TabHeader = ({ title, routeName }: { title?: string; routeName: string }) 
         <Pressable style={styles.back} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="chevron-left" size={26} color={colors.onSurface} />
         </Pressable>
-      ) : null}
+      ) : (
+        <View style={styles.headerAvatar}>
+          {user?.avatarUrl ? (
+            <Image source={{ uri: user.avatarUrl }} style={styles.headerAvatarImg} />
+          ) : (
+            <View style={styles.headerAvatarFallback}>
+              <MaterialCommunityIcons name="account" size={20} color={colors.primary} />
+            </View>
+          )}
+        </View>
+      )}
       <View style={styles.headerText}>
-        <Text style={styles.headerEyebrow}>{title ?? "Inicio"}</Text>
         <Text variant="titleMedium" style={styles.headerTitle}>
-          Hola {user?.name ?? "amigo"}
+          Hola, {user?.name?.split(" ")[0] ?? "amigo"}
         </Text>
+        {isHome && (
+          <Text style={styles.headerSub}>Protege a tu perro con su huella nasal</Text>
+        )}
+        {!isHome && (
+          <Text style={styles.headerSub}>{title}</Text>
+        )}
       </View>
       <Link asChild href="/(tabs)/notifications">
         <Pressable style={styles.headerBell}>
@@ -126,50 +142,65 @@ const TabHeader = ({ title, routeName }: { title?: string; routeName: string }) 
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: colors.surfaceContainerLowest,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.md,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 12,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    shadowColor: colors.onSurface,
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    gap: 12,
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  headerAvatarImg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  headerAvatarFallback: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryFixed,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerText: {
     flex: 1,
   },
   back: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: spacing.sm,
-  },
-  headerEyebrow: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontFamily: fonts.bodyMedium,
   },
   headerTitle: {
     color: colors.onSurface,
     fontFamily: fonts.headingMedium,
+    fontSize: 16,
+  },
+  headerSub: {
+    color: colors.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    marginTop: 1,
   },
   headerBell: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.primaryFixed,
+    backgroundColor: colors.surfaceContainerLow,
   },
   headerBadge: {
     position: "absolute",
-    top: 6,
-    right: 6,
+    top: 4,
+    right: 4,
     backgroundColor: colors.error,
     color: colors.onError,
   },
