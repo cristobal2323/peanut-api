@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Badge, Text } from "react-native-paper";
 import { useQuery } from "@tanstack/react-query";
-import { PeanutTheme, spacing } from "../../src/theme";
+import { colors, spacing, radii, fonts } from "../../src/theme";
 import { useAuthStore } from "../../src/store/auth";
 import { api } from "../../src/api/mockApi";
 import { queryKeys } from "../../src/lib/queryClient";
@@ -25,55 +25,60 @@ export default function TabsLayout() {
         header: ({ options, route }) => (
           <TabHeader title={(options?.title as string) ?? route.name} routeName={route.name} />
         ),
-        tabBarActiveTintColor: "#FFFFFF",
-        tabBarInactiveTintColor: "#E0E7FF",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: "600",
-          marginBottom: 2
+          fontFamily: fonts.bodySemiBold,
+          marginBottom: 2,
         },
         tabBarStyle: {
           borderTopWidth: 0,
-          backgroundColor: PeanutTheme.colors.primary,
+          backgroundColor: colors.surfaceContainerLowest,
           paddingBottom: bottomInset,
           paddingTop: 6,
-          height: 58 + bottomInset
-        }
+          height: 58 + bottomInset,
+          shadowColor: colors.onSurface,
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: -4 },
+          elevation: 3,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
-          tabBarIcon: iconFor("home-variant")
+          title: "Inicio",
+          tabBarIcon: iconFor("home-variant"),
         }}
       />
       <Tabs.Screen
         name="scan"
         options={{
-          title: "Scan",
-          tabBarIcon: iconFor("qrcode-scan")
+          title: "Escanear",
+          tabBarIcon: iconFor("qrcode-scan"),
         }}
       />
       <Tabs.Screen
         name="feed"
         options={{
-          title: "Feed",
-          tabBarIcon: iconFor("map-marker-radius")
+          title: "Comunidad",
+          tabBarIcon: iconFor("account-group"),
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
-          title: "Alerts",
-          tabBarIcon: iconFor("bell-badge")
+          title: "Alertas",
+          tabBarIcon: iconFor("bell-badge"),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
-          tabBarIcon: iconFor("account-circle")
+          title: "Perfil",
+          tabBarIcon: iconFor("account-circle"),
         }}
       />
     </Tabs>
@@ -86,7 +91,7 @@ const TabHeader = ({ title, routeName }: { title?: string; routeName: string }) 
   const user = useAuthStore((state) => state.user);
   const { data: notifications = [] } = useQuery({
     queryKey: queryKeys.notifications,
-    queryFn: api.fetchNotifications
+    queryFn: api.fetchNotifications,
   });
   const unread = notifications.filter((n) => !n.read).length;
 
@@ -96,18 +101,18 @@ const TabHeader = ({ title, routeName }: { title?: string; routeName: string }) 
     <View style={[styles.header, { paddingTop: Math.max(insets.top, spacing.sm) }]}>
       {showBack ? (
         <Pressable style={styles.back} onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="chevron-left" size={26} color="#FFFFFF" />
+          <MaterialCommunityIcons name="chevron-left" size={26} color={colors.onSurface} />
         </Pressable>
       ) : null}
       <View style={styles.headerText}>
         <Text style={styles.headerEyebrow}>{title ?? "Inicio"}</Text>
         <Text variant="titleMedium" style={styles.headerTitle}>
-          Hola {user?.name ?? "amigo"} 👋
+          Hola {user?.name ?? "amigo"}
         </Text>
       </View>
       <Link asChild href="/(tabs)/notifications">
         <Pressable style={styles.headerBell}>
-          <MaterialCommunityIcons name="bell-outline" size={22} color="#FFFFFF" />
+          <MaterialCommunityIcons name="bell-outline" size={22} color={colors.primary} />
           {unread > 0 && (
             <Badge style={styles.headerBadge} size={18}>
               {unread}
@@ -121,20 +126,20 @@ const TabHeader = ({ title, routeName }: { title?: string; routeName: string }) 
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: PeanutTheme.colors.primary,
+    backgroundColor: colors.surfaceContainerLowest,
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3
+    shadowColor: colors.onSurface,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   headerText: {
-    flex: 1
+    flex: 1,
   },
   back: {
     width: 44,
@@ -142,14 +147,16 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: spacing.sm
+    marginRight: spacing.sm,
   },
   headerEyebrow: {
-    color: "#E0E7FF",
-    fontSize: 12
+    color: colors.textMuted,
+    fontSize: 12,
+    fontFamily: fonts.bodyMedium,
   },
   headerTitle: {
-    color: "white"
+    color: colors.onSurface,
+    fontFamily: fonts.headingMedium,
   },
   headerBell: {
     width: 44,
@@ -157,17 +164,15 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
-    backgroundColor: "rgba(255,255,255,0.1)"
+    backgroundColor: colors.primaryFixed,
   },
   headerBadge: {
     position: "absolute",
     top: 6,
     right: 6,
-    backgroundColor: PeanutTheme.colors.error,
-    color: "white"
-  }
+    backgroundColor: colors.error,
+    color: colors.onError,
+  },
 });
 
 const ROOT_TABS = ["index", "scan", "feed", "notifications", "profile"];

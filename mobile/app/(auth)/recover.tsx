@@ -8,7 +8,7 @@ import { useFormik, FormikProvider } from "formik";
 import * as Yup from "yup";
 import { FormikTextInput } from "../../src/components/FormikTextInput";
 import { PrimaryButton } from "../../src/components/PrimaryButton";
-import { PeanutTheme, spacing } from "../../src/theme";
+import { colors, spacing, radii, fonts } from "../../src/theme";
 import { authApi } from "../../src/api/auth";
 import { LanguageToggle } from "../../src/components/LanguageToggle";
 import { useTranslation } from "../../src/i18n";
@@ -53,14 +53,14 @@ export default function RecoverScreen() {
   const status = formik.status as StatusMessage;
 
   return (
-    <LinearGradient colors={["#f7f6ff", "#ffffff"]} style={styles.screen}>
+    <View style={styles.screen}>
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
           <LinearGradient
-            colors={["#8e7bff", "#7c6ff9"]}
+            colors={[colors.primaryContainer, colors.primary]}
             start={[0, 0]}
             end={[1, 1]}
             style={styles.blobLarge}
@@ -85,8 +85,8 @@ export default function RecoverScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   mode="outlined"
-                  outlineColor="#E5E7EB"
-                  activeOutlineColor={PeanutTheme.colors.primary}
+                  outlineColor={colors.outlineVariant}
+                  activeOutlineColor={colors.primary}
                   style={styles.input}
                 />
               </View>
@@ -126,14 +126,14 @@ export default function RecoverScreen() {
           </FormikProvider>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: PeanutTheme.colors.background,
+    backgroundColor: colors.background,
   },
   scroll: {
     flexGrow: 1,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     borderRadius: 120,
     top: -80,
     right: -70,
-    opacity: 0.2,
+    opacity: 0.15,
     transform: [{ rotate: "-12deg" }],
   },
   blobSmall: {
@@ -155,21 +155,21 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "#7c6ff9",
-    opacity: 0.2,
+    backgroundColor: colors.primaryContainer,
+    opacity: 0.15,
     top: 60,
     left: 32,
   },
   card: {
     marginHorizontal: spacing.xl,
-    backgroundColor: PeanutTheme.colors.surface,
+    backgroundColor: colors.surfaceContainerLowest,
     padding: spacing.xl,
-    borderRadius: 24,
+    borderRadius: radii.xl,
     gap: spacing.md,
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    shadowColor: colors.onSurface,
+    shadowOpacity: 0.06,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
     elevation: 4,
   },
   language: {
@@ -178,29 +178,30 @@ const styles = StyleSheet.create({
   title: {
     textAlign: "center",
     marginBottom: spacing.xs,
+    color: colors.onSurface,
   },
   subtitle: {
     textAlign: "center",
-    color: "#64748B",
+    color: colors.textSecondary,
   },
   fieldGroup: {
     gap: spacing.xs,
   },
   input: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radii.md,
   },
   status: {
     marginTop: -spacing.sm,
   },
   success: {
-    color: "#16A34A",
+    color: colors.tertiary,
   },
   error: {
-    color: "#EF4444",
+    color: colors.error,
   },
   primaryButton: {
-    borderRadius: 24,
+    borderRadius: radii.full,
     marginTop: spacing.sm,
   },
   primaryButtonContent: {
@@ -214,10 +215,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   footerText: {
-    color: "#94A3B8",
+    color: colors.textMuted,
+    fontFamily: fonts.body,
   },
   link: {
-    color: PeanutTheme.colors.primary,
+    color: colors.primary,
     fontWeight: "700",
+    fontFamily: fonts.headingMedium,
   },
 });

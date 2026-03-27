@@ -9,7 +9,7 @@ import * as Yup from "yup";
 import { Text } from "react-native-paper";
 import { FormikTextInput } from "../src/components/FormikTextInput";
 import { PrimaryButton } from "../src/components/PrimaryButton";
-import { spacing } from "../src/theme";
+import { spacing, colors, fonts } from "../src/theme";
 import { api } from "../src/api/mockApi";
 
 export default function ReportSightingScreen() {
@@ -25,7 +25,7 @@ export default function ReportSightingScreen() {
         const loc = await Location.getCurrentPositionAsync({});
         setCoords({
           latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude
+          longitude: loc.coords.longitude,
         });
       }
     })();
@@ -33,35 +33,38 @@ export default function ReportSightingScreen() {
 
   const mutation = useMutation({
     mutationFn: api.submitSighting,
-    onSuccess: () => router.back()
+    onSuccess: () => router.back(),
   });
 
   return (
     <Formik
       initialValues={{ comment: "", image: "" }}
       validationSchema={Yup.object({
-        comment: Yup.string().min(4, "Comparte más detalles").required("Requerido"),
-        image: Yup.string().optional()
+        comment: Yup.string().min(4, "Comparte mas detalles").required("Requerido"),
+        image: Yup.string().optional(),
       })}
       onSubmit={(values, { setStatus }) => {
         setStatus(null);
         if (!coords) {
-          setStatus("Activa la ubicación para enviar el reporte");
+          setStatus("Activa la ubicacion para enviar el reporte");
           return;
         }
-        mutation.mutate({
-          dogId: "",
-          comment: values.comment,
-          image: values.image,
-          seenAt: new Date().toISOString(),
-          location: {
-            latitude: coords.latitude,
-            longitude: coords.longitude
+        mutation.mutate(
+          {
+            dogId: "",
+            comment: values.comment,
+            image: values.image,
+            seenAt: new Date().toISOString(),
+            location: {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            },
+          },
+          {
+            onError: (err: any) =>
+              setStatus(err?.message || "No pudimos enviar el reporte"),
           }
-        }, {
-          onError: (err: any) =>
-            setStatus(err?.message || "No pudimos enviar el reporte")
-        });
+        );
       }}
     >
       {({ handleSubmit, isSubmitting, isValid, setFieldValue, status }) => (
@@ -69,11 +72,16 @@ export default function ReportSightingScreen() {
           <Text variant="headlineSmall" style={styles.title}>
             Reportar avistamiento
           </Text>
+          <Text style={styles.subtitle}>
+            Ayuda a reunir a este perro con su familia
+          </Text>
           <PrimaryButton
             mode="outlined"
+            gradient={false}
+            icon="camera"
             onPress={async () => {
               const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
               });
               if (!result.canceled) {
                 setFieldValue("image", result.assets[0].uri);
@@ -92,8 +100,9 @@ export default function ReportSightingScreen() {
             onPress={() => handleSubmit()}
             loading={isSubmitting || mutation.isPending}
             disabled={!isValid}
+            icon="send"
           >
-            Enviar
+            Enviar reporte
           </PrimaryButton>
         </ScrollView>
       )}
@@ -104,12 +113,20 @@ export default function ReportSightingScreen() {
 const styles = StyleSheet.create({
   container: {
     padding: spacing.xl,
-    gap: spacing.md
+    gap: spacing.md,
+    backgroundColor: colors.background,
   },
   title: {
-    marginBottom: spacing.sm
+    marginBottom: spacing.xs,
+    color: colors.onSurface,
+    fontFamily: fonts.heading,
+  },
+  subtitle: {
+    color: colors.textMuted,
+    fontFamily: fonts.body,
+    marginBottom: spacing.sm,
   },
   error: {
-    color: "red"
-  }
+    color: colors.error,
+  },
 });

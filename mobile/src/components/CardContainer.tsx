@@ -1,6 +1,7 @@
 import React, { forwardRef } from "react";
 import { Card } from "react-native-paper";
 import { StyleSheet } from "react-native";
+import { colors, radii, ambientShadow } from "../theme";
 
 type Props = React.ComponentProps<typeof Card>;
 
@@ -16,8 +17,9 @@ CardContainer.displayName = "CardContainer";
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 18,
+    borderRadius: radii.xl,
     marginVertical: 8,
-    elevation: 1
-  }
+    backgroundColor: colors.surfaceContainerLowest,
+    ...ambientShadow,
+  },
 });

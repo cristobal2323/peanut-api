@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet } from "react-native";
 import { Avatar, Badge } from "react-native-paper";
 import { Dog } from "../types";
-import { PeanutTheme } from "../theme";
+import { colors } from "../theme";
 
 type Props = {
   dog: Pick<Dog, "name" | "photo" | "status">;
@@ -22,13 +22,18 @@ export const DogAvatar: React.FC<Props> = ({ dog, size = 56 }) => {
       {dog.photo ? (
         <Avatar.Image size={size} source={{ uri: dog.photo }} />
       ) : (
-        <Avatar.Text size={size} label={initials} />
+        <Avatar.Text
+          size={size}
+          label={initials}
+          style={{ backgroundColor: colors.primaryFixed }}
+          labelStyle={{ color: colors.onPrimaryContainer }}
+        />
       )}
       {dog.status === "lost" && (
         <Badge
           style={styles.badge}
           size={18}
-          theme={{ colors: { secondary: PeanutTheme.colors.error } }}
+          theme={{ colors: { secondary: colors.error } }}
         >
           !
         </Badge>
@@ -39,11 +44,12 @@ export const DogAvatar: React.FC<Props> = ({ dog, size = 56 }) => {
 
 const styles = StyleSheet.create({
   container: {
-    position: "relative"
+    position: "relative",
   },
   badge: {
     position: "absolute",
     top: -4,
-    right: -4
-  }
+    right: -4,
+    backgroundColor: colors.error,
+  },
 });

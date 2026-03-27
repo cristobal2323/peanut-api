@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet } from "react-native";
 import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { PeanutTheme, spacing } from "../theme";
+import { colors, spacing } from "../theme";
 
 type Props = {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
@@ -11,11 +11,7 @@ type Props = {
 
 export const EmptyState: React.FC<Props> = ({ icon, message }) => (
   <View style={styles.container}>
-    <MaterialCommunityIcons
-      name={icon}
-      size={48}
-      color={PeanutTheme.colors.primary}
-    />
+    <MaterialCommunityIcons name={icon} size={48} color={colors.primary} />
     <Text variant="bodyLarge" style={styles.message}>
       {message}
     </Text>
@@ -26,10 +22,10 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: spacing.xl,
     alignItems: "center",
-    gap: spacing.sm
+    gap: spacing.sm,
   },
   message: {
     textAlign: "center",
-    color: PeanutTheme.colors.tertiary
-  }
+    color: colors.textMuted,
+  },
 });

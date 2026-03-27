@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Text } from "react-native-paper";
-import { PeanutTheme } from "../theme";
+import { colors, fonts, radii } from "../theme";
 import { usePreferencesStore } from "../store/preferences";
 import { useTranslation } from "../i18n";
 
@@ -29,25 +29,26 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     padding: 4,
-    backgroundColor: "#EEF2FF",
-    borderRadius: 18,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radii.full,
     alignSelf: "flex-end",
-    gap: 4
+    gap: 4,
   },
   pill: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12
+    borderRadius: radii.full,
   },
   active: {
-    backgroundColor: PeanutTheme.colors.primary
+    backgroundColor: colors.primary,
   },
   text: {
     fontWeight: "700",
-    color: "#475569",
-    fontSize: 12
+    fontFamily: fonts.bodySemiBold,
+    color: colors.textSecondary,
+    fontSize: 12,
   },
   activeText: {
-    color: PeanutTheme.colors.onPrimary
-  }
+    color: colors.onPrimary,
+  },
 });

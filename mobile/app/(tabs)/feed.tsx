@@ -7,7 +7,7 @@ import { Text, SegmentedButtons } from "react-native-paper";
 import { CardContainer } from "../../src/components/CardContainer";
 import { DogAvatar } from "../../src/components/DogAvatar";
 import { EmptyState } from "../../src/components/EmptyState";
-import { spacing, PeanutTheme } from "../../src/theme";
+import { spacing, colors, radii, fonts } from "../../src/theme";
 import { api } from "../../src/api/mockApi";
 import { queryKeys } from "../../src/lib/queryClient";
 import { LostReport } from "../../src/types";
@@ -16,10 +16,10 @@ export default function FeedScreen() {
   const [distance, setDistance] = useState<string>("5");
   const { data: reports = [], isLoading } = useQuery({
     queryKey: queryKeys.lostReports,
-    queryFn: api.fetchLostReports
+    queryFn: api.fetchLostReports,
   });
 
-  const filtered = reports.filter(() => true); // placeholder for distance filter
+  const filtered = reports.filter(() => true);
 
   return (
     <View style={styles.container}>
@@ -34,7 +34,7 @@ export default function FeedScreen() {
         buttons={[
           { value: "5", label: "5 km" },
           { value: "10", label: "10 km" },
-          { value: "25", label: "25 km" }
+          { value: "25", label: "25 km" },
         ]}
       />
 
@@ -44,7 +44,7 @@ export default function FeedScreen() {
           latitude: 37.78825,
           longitude: -122.4324,
           latitudeDelta: 0.05,
-          longitudeDelta: 0.05
+          longitudeDelta: 0.05,
         }}
       >
         {filtered.map((report) => (
@@ -53,13 +53,13 @@ export default function FeedScreen() {
             coordinate={report.lastSeen}
             title={report.dogName}
             description={report.description}
-            pinColor={PeanutTheme.colors.primary}
+            pinColor={colors.primary}
           />
         ))}
       </MapView>
 
       {isLoading ? (
-        <Text>Cargando...</Text>
+        <Text style={styles.loading}>Cargando...</Text>
       ) : filtered.length === 0 ? (
         <EmptyState icon="map-marker-off" message="No hay reportes cercanos" />
       ) : (
@@ -82,9 +82,9 @@ const ReportCard = ({ report }: { report: LostReport }) => (
           dog={{ name: report.dogName, photo: report.images?.[0], status: "lost" }}
         />
         <View style={styles.cardText}>
-          <Text variant="titleMedium">{report.dogName}</Text>
+          <Text variant="titleMedium" style={{ color: colors.onSurface }}>{report.dogName}</Text>
           <Text variant="bodyMedium" style={styles.meta}>
-            Última vez: {report.lastSeen.address ?? "Cerca de ti"}
+            Ultima vez: {report.lastSeen.address ?? "Cerca de ti"}
           </Text>
           <Text variant="bodySmall" style={styles.meta}>
             {report.description}
@@ -101,38 +101,48 @@ const ReportCard = ({ report }: { report: LostReport }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md
+    paddingTop: spacing.md,
   },
   title: {
-    marginBottom: spacing.md
+    marginBottom: spacing.md,
+    color: colors.onSurface,
+    fontFamily: fonts.heading,
   },
   filters: {
-    marginBottom: spacing.sm
+    marginBottom: spacing.sm,
   },
   map: {
     height: 220,
-    borderRadius: 18,
-    marginBottom: spacing.md
+    borderRadius: radii.xl,
+    marginBottom: spacing.md,
   },
   list: {
-    marginTop: spacing.sm
+    marginTop: spacing.sm,
+  },
+  loading: {
+    textAlign: "center",
+    color: colors.textMuted,
+    marginTop: spacing.lg,
   },
   cardContent: {
     flexDirection: "row",
     alignItems: "center",
     padding: spacing.md,
-    gap: spacing.md
+    gap: spacing.md,
   },
   cardText: {
     flex: 1,
-    gap: spacing.xs
+    gap: spacing.xs,
   },
   meta: {
-    color: PeanutTheme.colors.tertiary
+    color: colors.textMuted,
+    fontFamily: fonts.body,
   },
   sightingLink: {
-    color: PeanutTheme.colors.secondary,
-    marginTop: 4
-  }
+    color: colors.secondary,
+    fontFamily: fonts.bodySemiBold,
+    marginTop: 4,
+  },
 });

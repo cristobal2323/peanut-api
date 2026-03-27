@@ -1,30 +1,31 @@
 import React, { forwardRef } from "react";
-import { Button } from "react-native-paper";
 import { StyleSheet } from "react-native";
-import { PeanutTheme } from "../theme";
+import { Button } from "react-native-paper";
+import { colors, radii, fonts } from "../theme";
 
 type Variant = "primary" | "secondary" | "danger";
 
 type Props = React.ComponentProps<typeof Button> & {
   variant?: Variant;
+  gradient?: boolean;
 };
 
 export const PrimaryButton = forwardRef<React.ComponentRef<typeof Button>, Props>(
   (
-    { variant = "primary", mode = "contained", disabled, loading, style, children, ...rest },
+    { variant = "primary", gradient = true, mode = "contained", disabled, loading, style, children, ...rest },
     ref
   ) => {
-    const backgroundColor =
+    const bgColor =
       variant === "secondary"
-        ? PeanutTheme.colors.secondary
+        ? colors.secondaryContainer
         : variant === "danger"
-          ? PeanutTheme.colors.error
-          : PeanutTheme.colors.primary;
+          ? colors.error
+          : colors.primary;
 
     const textColor =
       variant === "secondary"
-        ? PeanutTheme.colors.onSecondary
-        : PeanutTheme.colors.onPrimary;
+        ? colors.onSecondaryContainer
+        : colors.onPrimary;
 
     return (
       <Button
@@ -32,9 +33,10 @@ export const PrimaryButton = forwardRef<React.ComponentRef<typeof Button>, Props
         mode={mode}
         disabled={disabled}
         loading={loading}
-        style={[styles.button, { backgroundColor }, style]}
+        style={[styles.button, { backgroundColor: bgColor }, style]}
         textColor={textColor}
         contentStyle={styles.content}
+        labelStyle={styles.label}
         {...rest}
       >
         {children}
@@ -47,9 +49,13 @@ PrimaryButton.displayName = "PrimaryButton";
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 14
+    borderRadius: radii.full,
   },
   content: {
-    paddingVertical: 8
-  }
+    paddingVertical: 8,
+  },
+  label: {
+    fontFamily: fonts.headingMedium,
+    letterSpacing: 0.2,
+  },
 });

@@ -4,12 +4,12 @@ import { Link, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Checkbox, Text, TextInput } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFormik, FormikProvider } from "formik";
 import * as Yup from "yup";
 import { FormikTextInput } from "../../src/components/FormikTextInput";
 import { PrimaryButton } from "../../src/components/PrimaryButton";
-import { PeanutTheme, spacing } from "../../src/theme";
+import { colors, spacing, radii, fonts } from "../../src/theme";
 import { useAuthStore } from "../../src/store/auth";
 import { authApi } from "../../src/api/auth";
 import { LanguageToggle } from "../../src/components/LanguageToggle";
@@ -73,14 +73,14 @@ export default function SignupScreen() {
   });
 
   return (
-    <LinearGradient colors={["#f7f6ff", "#ffffff"]} style={styles.screen}>
+    <View style={styles.screen}>
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
           <LinearGradient
-            colors={["#8e7bff", "#7c6ff9"]}
+            colors={[colors.primaryContainer, colors.primary]}
             start={[0, 0]}
             end={[1, 1]}
             style={styles.blobLarge}
@@ -103,8 +103,8 @@ export default function SignupScreen() {
                   label={t("auth.signup.nameLabel")}
                   placeholder={t("auth.signup.namePlaceholder")}
                   mode="outlined"
-                  outlineColor="#E5E7EB"
-                  activeOutlineColor={PeanutTheme.colors.primary}
+                  outlineColor={colors.outlineVariant}
+                  activeOutlineColor={colors.primary}
                   style={styles.input}
                 />
                 <FormikTextInput
@@ -114,8 +114,8 @@ export default function SignupScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   mode="outlined"
-                  outlineColor="#E5E7EB"
-                  activeOutlineColor={PeanutTheme.colors.primary}
+                  outlineColor={colors.outlineVariant}
+                  activeOutlineColor={colors.primary}
                   style={styles.input}
                 />
                 <FormikTextInput
@@ -124,8 +124,8 @@ export default function SignupScreen() {
                   placeholder={t("auth.signup.passwordPlaceholder")}
                   secure={!showPassword}
                   mode="outlined"
-                  outlineColor="#E5E7EB"
-                  activeOutlineColor={PeanutTheme.colors.primary}
+                  outlineColor={colors.outlineVariant}
+                  activeOutlineColor={colors.primary}
                   style={styles.input}
                   right={
                     <TextInput.Icon
@@ -140,8 +140,8 @@ export default function SignupScreen() {
                   placeholder={t("auth.signup.phonePlaceholder")}
                   keyboardType="phone-pad"
                   mode="outlined"
-                  outlineColor="#E5E7EB"
-                  activeOutlineColor={PeanutTheme.colors.primary}
+                  outlineColor={colors.outlineVariant}
+                  activeOutlineColor={colors.primary}
                   style={styles.input}
                 />
               </View>
@@ -153,8 +153,8 @@ export default function SignupScreen() {
                 <Checkbox
                   status={acceptTerms ? "checked" : "unchecked"}
                   onPress={() => setAcceptTerms((prev) => !prev)}
-                  color={PeanutTheme.colors.primary}
-                  uncheckedColor="#CBD5E1"
+                  color={colors.primary}
+                  uncheckedColor={colors.outlineVariant}
                 />
                 <Text style={styles.termsText}>
                   {t("auth.signup.termsLabel")}
@@ -188,9 +188,8 @@ export default function SignupScreen() {
               </View>
 
               <View style={styles.socialRow}>
-                <SocialIcon name="apple" color="#000000" />
                 <SocialIcon name="google" color="#DB4437" />
-                <SocialIcon name="facebook" color="#1877F2" />
+                <SocialIcon name="apple" color={colors.onSurface} />
               </View>
 
               <View style={styles.footerLinks}>
@@ -201,17 +200,25 @@ export default function SignupScreen() {
                   {t("auth.signup.footerLink")}
                 </Link>
               </View>
+
+              <View style={styles.securityNote}>
+                <MaterialCommunityIcons name="lock-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.securityText}>
+                  Tus datos y los de tu perro estan protegidos
+                </Text>
+              </View>
+
               <LanguageToggle style={styles.language} />
             </View>
           </FormikProvider>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
 type SocialIconProps = {
-  name: "apple" | "google" | "facebook";
+  name: "apple" | "google";
   color: string;
 };
 
@@ -224,7 +231,7 @@ const SocialIcon: React.FC<SocialIconProps> = ({ name, color }) => (
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: PeanutTheme.colors.background,
+    backgroundColor: colors.background,
   },
   scroll: {
     flexGrow: 1,
@@ -238,7 +245,7 @@ const styles = StyleSheet.create({
     borderRadius: 140,
     top: -100,
     right: -90,
-    opacity: 0.2,
+    opacity: 0.15,
     transform: [{ rotate: "-12deg" }],
   },
   blobSmall: {
@@ -246,21 +253,21 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: "#7c6ff9",
-    opacity: 0.2,
+    backgroundColor: colors.primaryContainer,
+    opacity: 0.15,
     top: 70,
     left: 28,
   },
   card: {
     marginHorizontal: spacing.xl,
-    backgroundColor: PeanutTheme.colors.surface,
+    backgroundColor: colors.surfaceContainerLowest,
     padding: spacing.xl,
-    borderRadius: 24,
+    borderRadius: radii.xl,
     gap: spacing.md,
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    shadowColor: colors.onSurface,
+    shadowOpacity: 0.06,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
     elevation: 4,
   },
   language: {
@@ -269,18 +276,19 @@ const styles = StyleSheet.create({
   title: {
     textAlign: "center",
     marginBottom: spacing.xs,
+    color: colors.onSurface,
   },
   subtitle: {
     textAlign: "center",
-    color: "#64748B",
+    color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   fieldGroup: {
     gap: spacing.md,
   },
   input: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radii.md,
   },
   termsRow: {
     flexDirection: "row",
@@ -289,19 +297,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   termsText: {
-    color: "#475569",
+    color: colors.textSecondary,
     flex: 1,
-  },
-  linkStrong: {
-    color: PeanutTheme.colors.primary,
-    fontWeight: "700",
+    fontFamily: fonts.body,
   },
   error: {
-    color: "#EF4444",
+    color: colors.error,
     marginTop: -spacing.sm,
   },
   primaryButton: {
-    borderRadius: 24,
+    borderRadius: radii.full,
     marginTop: spacing.sm,
   },
   primaryButtonContent: {
@@ -315,11 +320,12 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.outlineVariant,
   },
   dividerText: {
-    color: "#94A3B8",
+    color: colors.textMuted,
     fontSize: 13,
+    fontFamily: fonts.bodyMedium,
   },
   socialRow: {
     flexDirection: "row",
@@ -331,16 +337,14 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
+    backgroundColor: colors.surfaceContainerLow,
+    shadowColor: colors.onSurface,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
   footerLinks: {
     flexDirection: "row",
@@ -350,10 +354,23 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   footerText: {
-    color: "#94A3B8",
+    color: colors.textMuted,
+    fontFamily: fonts.body,
   },
   link: {
-    color: PeanutTheme.colors.primary,
+    color: colors.primary,
     fontWeight: "700",
+    fontFamily: fonts.headingMedium,
+  },
+  securityNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  securityText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontFamily: fonts.body,
   },
 });

@@ -1,33 +1,46 @@
 import React from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { List, Text, Badge, Divider } from "react-native-paper";
+import { Text, Badge } from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "../../src/api/mockApi";
 import { queryKeys } from "../../src/lib/queryClient";
 import { AppNotification } from "../../src/types";
 import { EmptyState } from "../../src/components/EmptyState";
-import { spacing, PeanutTheme } from "../../src/theme";
+import { spacing, colors, radii, fonts } from "../../src/theme";
+import { Pressable } from "react-native";
 
 export default function NotificationsScreen() {
   const queryClient = useQueryClient();
   const { data: notifications = [] } = useQuery({
     queryKey: queryKeys.notifications,
-    queryFn: api.fetchNotifications
+    queryFn: api.fetchNotifications,
   });
 
   const mutation = useMutation({
     mutationFn: api.markNotificationAsRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.notifications })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.notifications }),
   });
 
-  const renderIcon = (type: AppNotification["type"]) => {
+  const iconFor = (type: AppNotification["type"]): string => {
     switch (type) {
       case "match":
         return "paw";
       case "sighting":
         return "map-marker";
       default:
-        return "information";
+        return "bell-outline";
+    }
+  };
+
+  const iconColor = (type: AppNotification["type"]) => {
+    switch (type) {
+      case "match":
+        return colors.tertiary;
+      case "sighting":
+        return colors.secondary;
+      default:
+        return colors.primary;
     }
   };
 
@@ -43,17 +56,25 @@ export default function NotificationsScreen() {
           data={notifications}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <List.Item
-              title={item.title}
-              description={item.message}
+            <Pressable
+              style={[styles.notifCard, !item.read && styles.unreadCard]}
               onPress={() => mutation.mutate(item.id)}
-              left={(props) => <List.Icon {...props} icon={renderIcon(item.type)} />}
-              right={() =>
-                !item.read ? <Badge style={styles.badge}>•</Badge> : null
-              }
-            />
+            >
+              <View style={[styles.notifIcon, { backgroundColor: `${iconColor(item.type)}15` }]}>
+                <MaterialCommunityIcons
+                  name={iconFor(item.type) as any}
+                  size={22}
+                  color={iconColor(item.type)}
+                />
+              </View>
+              <View style={styles.notifContent}>
+                <Text variant="titleSmall" style={{ color: colors.onSurface }}>{item.title}</Text>
+                <Text style={styles.notifMessage}>{item.message}</Text>
+              </View>
+              {!item.read && <Badge style={styles.badge} size={10}>{""}</Badge>}
+            </Pressable>
           )}
-          ItemSeparatorComponent={() => <Divider />}
+          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
         />
       )}
     </View>
@@ -63,14 +84,44 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: spacing.xl
+    backgroundColor: colors.background,
+    padding: spacing.xl,
   },
   title: {
-    marginBottom: spacing.md
+    marginBottom: spacing.md,
+    color: colors.onSurface,
+    fontFamily: fonts.heading,
+  },
+  notifCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surfaceContainerLowest,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+  },
+  unreadCard: {
+    backgroundColor: colors.primaryFixed,
+  },
+  notifIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notifContent: {
+    flex: 1,
+    gap: 2,
+  },
+  notifMessage: {
+    color: colors.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 13,
   },
   badge: {
-    alignSelf: "center",
-    backgroundColor: PeanutTheme.colors.primary,
-    color: "white"
-  }
+    backgroundColor: colors.primary,
+    alignSelf: "flex-start",
+    marginTop: 4,
+  },
 });
