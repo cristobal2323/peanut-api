@@ -2,7 +2,7 @@
 node_modules/
 
 # Build output
-/dist
+dist/
 
 # Env files
 .env
@@ -25,6 +25,9 @@ coverage/
 .nyc_output/
 .turbo/
 
-# Prisma local artifacts (if ever using sqlite/dev files)
+# Prisma local artifacts
 prisma/dev.db
 prisma/dev.db-journal
+
+# Expo
+.expo/

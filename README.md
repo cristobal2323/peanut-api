@@ -1,57 +1,107 @@
-# Peanut API
+# Peanut
+
+Plataforma de identificacion y busqueda de perros perdidos. Monorepo con backend API y app movil.
+
+## Estructura
+
+```
+peanut/
+├── backend/    # API REST (NestJS + Prisma + PostgreSQL)
+└── mobile/     # App movil (Expo + React Native)
+```
 
 ## Requisitos
 
 - Node.js 18+
-- PostgreSQL disponible y accesible
+- PostgreSQL
+- iOS Simulator o Android Emulator (para la app movil)
 
-## Como correr el proyecto (dev)
+## Inicio rapido
 
-1. Instala dependencias (ya hay package.json):
+### Backend
 
-```
+```bash
+cd backend
 npm install
 ```
 
-2. Crea `.env` en la raiz con tu conexion a Postgres:
+Crea `backend/.env` con las siguientes variables:
 
-```
+```env
+# Base de datos (PostgreSQL / Supabase)
 DATABASE_URL="postgresql://user:pass@localhost:5432/peanut"
-```
+DIRECT_URL="postgresql://user:pass@localhost:5432/peanut"
 
-3. Genera Prisma y aplica la migracion inicial:
-
-```
-npx prisma generate
-npx prisma migrate dev --name init
-```
-
-4. Arranca en modo desarrollo:
-
-```
-npm run start:dev
-```
-
-El API responde en http://localhost:3000.
-
-## Autenticacion y correos
-
-- Las llamadas (salvo `POST /users/signup`, `POST /users/login` y `POST /users/recover-password`) requieren header `Authorization: Bearer <token>` obtenido desde `/users/login`.
-- Configura un secreto JWT y tiempo de expiracion en `.env`:
-
-```
-JWT_SECRET=pon_un_valor_secreto
+# JWT
+JWT_SECRET=tu_secreto
 JWT_EXPIRES_IN=7d
-```
+JWT_REFRESH_EXPIRES_IN=30d
 
-- Para recuperar contrasena por correo configura SMTP , host por defecto `smtp.gmail.com` si usas Gmail):
-
-```
-SMTP_HOST=smtp.example.com
+# SMTP (para recuperacion de contrasena)
+SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=usuario
-SMTP_PASS=clave
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASS=tu_clave
 EMAIL_FROM="Peanut <no-reply@peanut.com>"
 ```
 
-Si faltan estas variables el envio de correos fallara al intentar recuperar contrasena.
+Genera el cliente Prisma y aplica migraciones:
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+```
+
+Levanta el servidor de desarrollo:
+
+```bash
+npm run start:dev
+```
+
+La API responde en `http://localhost:3000`.
+
+### Mobile
+
+```bash
+cd mobile
+npm install
+npm start
+```
+
+Configura `EXPO_PUBLIC_API_URL` apuntando a tu backend (por defecto `http://localhost:3000`).
+
+## Scripts disponibles
+
+### Backend (`backend/`)
+
+| Script | Descripcion |
+|---|---|
+| `npm run start:dev` | Servidor de desarrollo con hot-reload |
+| `npm run build` | Compilar TypeScript |
+| `npm start` | Servidor en produccion |
+| `npm run prisma:generate` | Generar cliente Prisma |
+| `npm run prisma:migrate` | Aplicar migraciones |
+
+### Mobile (`mobile/`)
+
+| Script | Descripcion |
+|---|---|
+| `npm start` | Servidor Expo |
+| `npm run ios` | Correr en simulador iOS |
+| `npm run android` | Correr en emulador Android |
+| `npm run lint` | Lint |
+
+## Stack
+
+- **Backend:** NestJS 11, Prisma 7, PostgreSQL, JWT, Nodemailer
+- **Mobile:** Expo 51, React Native 0.74, React Query, Zustand, React Native Paper
+
+## Autenticacion
+
+Todas las rutas requieren `Authorization: Bearer <token>` excepto:
+
+- `POST /users/signup`
+- `POST /users/login`
+- `POST /users/recover-password`
+
+El token se obtiene desde `/users/login`.

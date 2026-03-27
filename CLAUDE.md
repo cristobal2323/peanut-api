@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Peanut is a full-stack dog identification and lost dog reporting platform. Monorepo with a **NestJS backend** (root) and a **React Native/Expo mobile app** (`mobile/`).
+Peanut is a full-stack dog identification and lost dog reporting platform. Monorepo with a **NestJS backend** (`backend/`) and a **React Native/Expo mobile app** (`mobile/`).
 
 ## Commands
 
-### Backend (run from root)
+### Backend (run from backend/)
 ```bash
 npm run start:dev          # Dev server (ts-node-dev, port 3000)
 npm run build              # Compile TypeScript → dist/
@@ -28,12 +28,12 @@ npm run lint               # Lint
 ## Architecture
 
 ### Backend (NestJS 11 + Prisma 7 + PostgreSQL)
-- **Entry point:** `src/main.ts` — global validation pipe with whitelist + transform enabled
+- **Entry point:** `backend/src/main.ts` — global validation pipe with whitelist + transform enabled
 - **Auth:** Global `JwtAuthGuard` on all routes; use `@Public()` decorator to opt out
 - **Modules:** Feature-based (`users/`, `dogs/`, `lost-reports/`, `sightings/`, `scan-events/`, `notifications/`, `mail/`)
-- **Database:** Prisma ORM with PostgreSQL adapter (`@prisma/adapter-pg`). Schema at `prisma/schema.prisma`
+- **Database:** Prisma ORM with PostgreSQL adapter (`@prisma/adapter-pg`). Schema at `backend/prisma/schema.prisma`
 - **Validation:** class-validator DTOs in each module's `dto/` folder
-- **i18n:** `src/i18n/messages.ts` with EN/ES translations for error messages
+- **i18n:** `backend/src/i18n/messages.ts` with EN/ES translations for error messages
 - **Password hashing:** bcrypt (10 rounds)
 - **Email:** Nodemailer via `MailService` for password recovery
 
@@ -49,7 +49,7 @@ npm run lint               # Lint
 
 ## Environment Variables
 
-Required in `.env` at root:
+Required in `backend/.env`:
 - `DATABASE_URL`, `DIRECT_URL` — PostgreSQL connection strings (Supabase)
 - `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`
