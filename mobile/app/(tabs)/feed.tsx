@@ -42,6 +42,7 @@ function timeAgo(dateStr: string): string {
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState<FilterValue>("all");
+  const [showFilters, setShowFilters] = useState(true);
 
   const { data: reports = [], isLoading } = useQuery({
     queryKey: queryKeys.communityReports,
@@ -75,9 +76,15 @@ export default function FeedScreen() {
             Ayuda a reunir a las familias con sus mascotas
           </Text>
         </View>
-        <Pressable style={styles.filterButton}>
+        <Pressable
+          style={styles.filterButton}
+          onPress={() => {
+            setShowFilters((v) => !v);
+            if (showFilters) setActiveFilter("all");
+          }}
+        >
           <MaterialCommunityIcons
-            name="tune-variant"
+            name={showFilters ? "filter-variant-remove" : "filter-variant"}
             size={22}
             color={colors.onSurface}
           />
@@ -85,29 +92,31 @@ export default function FeedScreen() {
       </View>
 
       {/* Filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtersRow}
-        style={styles.filtersScroll}
-      >
-        {FILTERS.map((f) => {
-          const active = activeFilter === f.value;
-          return (
-            <Pressable
-              key={f.value}
-              onPress={() => setActiveFilter(f.value)}
-              style={[styles.chip, active && styles.chipActive]}
-            >
-              <Text
-                style={[styles.chipText, active && styles.chipTextActive]}
+      {showFilters && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersRow}
+          style={styles.filtersScroll}
+        >
+          {FILTERS.map((f) => {
+            const active = activeFilter === f.value;
+            return (
+              <Pressable
+                key={f.value}
+                onPress={() => setActiveFilter(f.value)}
+                style={[styles.chip, active && styles.chipActive]}
               >
-                {f.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+                <Text
+                  style={[styles.chipText, active && styles.chipTextActive]}
+                >
+                  {f.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {/* Active reports banner */}
       <View style={styles.banner}>
