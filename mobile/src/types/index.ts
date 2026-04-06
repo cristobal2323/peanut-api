@@ -71,6 +71,21 @@ export interface AppNotification {
   type: NotificationKind;
 }
 
+export type ReportType = "lost" | "found";
+
+export interface CommunityReport {
+  id: string;
+  dogName: string;
+  breed: string;
+  description?: string;
+  reportType: ReportType;
+  photo: string;
+  distanceKm: number;
+  location: string;
+  createdAt: string;
+  dogId?: string;
+}
+
 export interface AuthResponse {
   token: string;
   expiresIn: string | number;

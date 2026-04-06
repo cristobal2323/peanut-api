@@ -1,4 +1,4 @@
-import { Dog, LostReport, AppNotification, Sighting } from "../types";
+import { Dog, LostReport, AppNotification, Sighting, CommunityReport } from "../types";
 import { useDogsStore } from "../store/dogs";
 
 const delay = (ms = 400) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -98,6 +98,69 @@ const sampleNotifications: AppNotification[] = [
   }
 ];
 
+const sampleCommunityReports: CommunityReport[] = [
+  {
+    id: "cr1",
+    dogName: "Rocky",
+    breed: "Beagle",
+    description: "Encontrado sin collar. Esperando identificación de trufa.",
+    reportType: "found",
+    photo: "https://images.unsplash.com/photo-1505628346881-b72b27e84530?auto=format&fit=crop&w=800&q=80",
+    distanceKm: 2.8,
+    location: "Parque Norte",
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    dogId: "cr-d1",
+  },
+  {
+    id: "cr2",
+    dogName: "Max",
+    breed: "Golden Retriever",
+    description: "Encontrado con collar azul, muy amigable. Buscando dueño.",
+    reportType: "found",
+    photo: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=800&q=80",
+    distanceKm: 1.2,
+    location: "Plaza Central",
+    createdAt: new Date(Date.now() - 172800000).toISOString(),
+    dogId: "cr-d2",
+  },
+  {
+    id: "cr3",
+    dogName: "Luna",
+    breed: "Border Collie",
+    description: "Se escapó durante paseo. Responde a su nombre, tiene microchip.",
+    reportType: "lost",
+    photo: "https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=800&q=80",
+    distanceKm: 4.1,
+    location: "Av. Los Leones",
+    createdAt: new Date(Date.now() - 43200000).toISOString(),
+    dogId: "d2",
+  },
+  {
+    id: "cr4",
+    dogName: "Coco",
+    breed: "Poodle",
+    description: "Perdido desde ayer, lleva collar rojo con placa.",
+    reportType: "lost",
+    photo: "https://images.unsplash.com/photo-1594922009922-d1665120be39?auto=format&fit=crop&w=800&q=80",
+    distanceKm: 3.5,
+    location: "Barrio Italia",
+    createdAt: new Date(Date.now() - 259200000).toISOString(),
+    dogId: "cr-d3",
+  },
+  {
+    id: "cr5",
+    dogName: "Toby",
+    breed: "Labrador",
+    description: "Encontrado desorientado en la calle. Sin collar, buen estado.",
+    reportType: "found",
+    photo: "https://images.unsplash.com/photo-1529429617124-95b109e86bb8?auto=format&fit=crop&w=800&q=80",
+    distanceKm: 0.8,
+    location: "Parque O'Higgins",
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    dogId: "cr-d4",
+  },
+];
+
 export const api = {
   async fetchDogs(): Promise<Dog[]> {
     await delay();
@@ -106,6 +169,10 @@ export const api = {
   async fetchDog(id: string): Promise<Dog | undefined> {
     await delay();
     return sampleDogs.find((d) => d.id === id);
+  },
+  async fetchCommunityReports(): Promise<CommunityReport[]> {
+    await delay();
+    return sampleCommunityReports;
   },
   async fetchLostReports(): Promise<LostReport[]> {
     await delay();

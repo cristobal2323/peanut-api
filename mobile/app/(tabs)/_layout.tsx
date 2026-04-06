@@ -77,6 +77,7 @@ export default function TabsLayout() {
         name="feed"
         options={{
           title: "Comunidad",
+          headerShown: false,
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="account-group-outline" color={color} size={size} focused={focused} />,
         }}
       />
