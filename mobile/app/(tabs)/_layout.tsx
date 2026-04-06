@@ -10,8 +10,24 @@ import { useAuthStore } from "../../src/store/auth";
 import { api } from "../../src/api/mockApi";
 import { queryKeys } from "../../src/lib/queryClient";
 
-const iconFor = (name: string) => (props: { color: string; size: number }) => (
-  <MaterialCommunityIcons name={name as any} {...props} />
+const TabIcon = ({
+  name,
+  color,
+}: {
+  name: string;
+  color: string;
+  size: number;
+  focused: boolean;
+}) => (
+  <View style={styles.iconContainer}>
+    <MaterialCommunityIcons name={name as any} size={24} color={color} />
+  </View>
+);
+
+const ScanTabIcon = () => (
+  <View style={styles.scanButton}>
+    <MaterialCommunityIcons name="scan-helper" size={28} color={colors.onPrimary} />
+  </View>
 );
 
 export default function TabsLayout() {
@@ -32,6 +48,9 @@ export default function TabsLayout() {
           fontFamily: fonts.bodySemiBold,
           marginBottom: 2,
         },
+        tabBarIconStyle: {
+          overflow: "visible",
+        },
         tabBarStyle: {
           borderTopWidth: 0,
           backgroundColor: colors.surfaceContainerLowest,
@@ -51,35 +70,41 @@ export default function TabsLayout() {
         options={{
           title: "Inicio",
           headerShown: false,
-          tabBarIcon: iconFor("home-variant"),
-        }}
-      />
-      <Tabs.Screen
-        name="scan"
-        options={{
-          title: "Escanear",
-          tabBarIcon: iconFor("qrcode-scan"),
+          tabBarIcon: ({ color, size, focused }) => <TabIcon name="home-outline" color={color} size={size} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="feed"
         options={{
           title: "Comunidad",
-          tabBarIcon: iconFor("account-group"),
+          tabBarIcon: ({ color, size, focused }) => <TabIcon name="account-group-outline" color={color} size={size} focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="scan"
+        options={{
+          title: "Escanear",
+          tabBarIcon: () => <ScanTabIcon />,
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontFamily: fonts.bodySemiBold,
+            marginBottom: 2,
+            marginTop: 18,
+          },
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
           title: "Alertas",
-          tabBarIcon: iconFor("bell-badge"),
+          tabBarIcon: ({ color, size, focused }) => <TabIcon name="bell-outline" color={color} size={size} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Perfil",
-          tabBarIcon: iconFor("account-circle"),
+          tabBarIcon: ({ color, size, focused }) => <TabIcon name="account-outline" color={color} size={size} focused={focused} />,
         }}
       />
     </Tabs>
@@ -142,6 +167,24 @@ const TabHeader = ({ title, routeName }: { title?: string; routeName: string }) 
 };
 
 const styles = StyleSheet.create({
+  iconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scanButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primaryContainer,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    shadowColor: colors.primaryContainer,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
   header: {
     backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
