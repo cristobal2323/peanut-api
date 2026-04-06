@@ -50,6 +50,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "Inicio",
+          headerShown: false,
           tabBarIcon: iconFor("home-variant"),
         }}
       />

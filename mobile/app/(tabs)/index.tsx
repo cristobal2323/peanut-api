@@ -5,27 +5,25 @@ import {
   StyleSheet,
   Image,
   Pressable,
-  Dimensions,
-  ActivityIndicator,
 } from "react-native";
 import { Link } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { Text } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
-import { spacing, colors, radii, fonts } from "../../src/theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { spacing, colors, fonts } from "../../src/theme";
 import { useAuthStore } from "../../src/store/auth";
 import { useDogsStore } from "../../src/store/dogs";
 import { api } from "../../src/api/mockApi";
 import { queryKeys } from "../../src/lib/queryClient";
-import { LostReport } from "../../src/types";
 
-const SCREEN_W = Dimensions.get("window").width;
-const CARD_H = 380;
+const ACCENT = "#F59E42";
 
 export default function HomeScreen() {
-  const user = useAuthStore((state) => state.user);
-  const dogs = useDogsStore((state) => state.dogs);
+  const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
+  const dogs = useDogsStore((s) => s.dogs);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const heroDog = dogs[selectedIdx] ?? dogs[0];
   const hasDogs = dogs.length > 0;
@@ -35,373 +33,368 @@ export default function HomeScreen() {
     queryFn: api.fetchLostReports,
   });
 
+  const recentActivity = [
+    {
+      id: "1",
+      message: heroDog
+        ? `Trufa de ${heroDog.name} escaneada correctamente`
+        : "Bienvenido a Peanut",
+      time: "Hace 2 dias",
+    },
+    {
+      id: "2",
+      message: "Nuevo perro perdido cerca de ti",
+      time: "Hace 5 horas",
+    },
+  ];
+
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* ════════════════════════════════════════════
-          HERO CARD
-         ════════════════════════════════════════════ */}
-      <View style={styles.heroCard}>
-        {/* Full-bleed dog image */}
-        {heroDog?.photo ? (
-          <HeroImage uri={heroDog.photo} />
+      {/* ── Gradient Header ── */}
+      <LinearGradient
+        colors={[ACCENT, `${ACCENT}E6`]}
+        style={[styles.header, { paddingTop: insets.top + spacing.lg }]}
+      >
+        <Text style={styles.greeting}>
+          Hola, {user?.name?.split(" ")[0] ?? "amigo"}! 👋
+        </Text>
+        <Text style={styles.greetingSub}>
+          Manten seguro a tu mejor amigo
+        </Text>
+      </LinearGradient>
+
+      {/* ── Body (overlaps header slightly) ── */}
+      <View style={styles.body}>
+        {hasDogs ? (
+          <>
+            {/* Dog Card */}
+            <View style={styles.dogCard}>
+              <View style={styles.dogCardRow}>
+                {heroDog.photo ? (
+                  <Image
+                    source={{ uri: heroDog.photo }}
+                    style={styles.dogAvatar}
+                  />
+                ) : (
+                  <View style={[styles.dogAvatar, styles.dogAvatarFallback]}>
+                    <MaterialCommunityIcons
+                      name="dog"
+                      size={32}
+                      color={colors.outlineVariant}
+                    />
+                  </View>
+                )}
+                <View style={styles.dogInfo}>
+                  <View style={styles.dogNameRow}>
+                    <Text style={styles.dogName}>{heroDog.name}</Text>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        heroDog.status === "lost"
+                          ? styles.statusLost
+                          : styles.statusSafe,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusText,
+                          {
+                            color:
+                              heroDog.status === "lost"
+                                ? colors.error
+                                : "#fff",
+                          },
+                        ]}
+                      >
+                        {heroDog.status === "lost" ? "Perdido" : "Seguro"}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.dogBreed}>
+                    {heroDog.breed ?? "Tu perro"}
+                  </Text>
+                </View>
+                <Link href={`/dog/${heroDog.id}` as any} asChild>
+                  <Pressable style={styles.dogArrow}>
+                    <MaterialCommunityIcons
+                      name="arrow-right"
+                      size={20}
+                      color={ACCENT}
+                    />
+                  </Pressable>
+                </Link>
+              </View>
+            </View>
+
+            {/* Dog Selector (multiple dogs) */}
+            {dogs.length > 1 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipsWrap}
+              >
+                {dogs.map((dog, i) => (
+                  <Pressable
+                    key={dog.id}
+                    onPress={() => setSelectedIdx(i)}
+                    style={[
+                      styles.chip,
+                      i === selectedIdx && styles.chipActive,
+                    ]}
+                  >
+                    {dog.photo ? (
+                      <Image
+                        source={{ uri: dog.photo }}
+                        style={styles.chipAvatar}
+                      />
+                    ) : (
+                      <View style={styles.chipAvatarFb}>
+                        <Text style={styles.chipInitial}>
+                          {dog.name.charAt(0)}
+                        </Text>
+                      </View>
+                    )}
+                    <Text
+                      style={
+                        i === selectedIdx
+                          ? styles.chipNameActive
+                          : styles.chipName
+                      }
+                    >
+                      {dog.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+
+            {/* Quick Actions Grid */}
+            <View style={styles.actionsGrid}>
+              <Link href="/(tabs)/scan" asChild>
+                <Pressable style={styles.actionCard}>
+                  <View
+                    style={[
+                      styles.actionIcon,
+                      { backgroundColor: `${ACCENT}1A` },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="line-scan"
+                      size={24}
+                      color={ACCENT}
+                    />
+                  </View>
+                  <Text style={styles.actionTitle}>Escanear trufa</Text>
+                  <Text style={styles.actionSub}>Actualizar registro</Text>
+                </Pressable>
+              </Link>
+
+              <Link href={`/dog/${heroDog.id}` as any} asChild>
+                <Pressable style={styles.actionCard}>
+                  <View
+                    style={[
+                      styles.actionIcon,
+                      { backgroundColor: "rgba(239,68,68,0.1)" },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="alert-circle-outline"
+                      size={24}
+                      color="#EF4444"
+                    />
+                  </View>
+                  <Text style={styles.actionTitle}>Reportar perdido</Text>
+                  <Text style={styles.actionSub}>Activar alerta</Text>
+                </Pressable>
+              </Link>
+            </View>
+          </>
         ) : (
-          <View style={styles.heroImgPlaceholder}>
-            <MaterialCommunityIcons name="dog" size={80} color={colors.outlineVariant} />
-          </View>
+          /* ── No dogs: registration CTA ── */
+          <LinearGradient
+            colors={[ACCENT, `${ACCENT}CC`]}
+            style={styles.registerCard}
+          >
+            <View style={styles.registerIconWrap}>
+              <MaterialCommunityIcons name="plus" size={32} color="#fff" />
+            </View>
+            <Text style={styles.registerTitle}>
+              Registra a tu primer perro
+            </Text>
+            <Text style={styles.registerSub}>
+              Protegelo con su huella digital unica: la trufa
+            </Text>
+            <Link href="/dog/new" asChild>
+              <Pressable style={styles.registerBtn}>
+                <Text style={styles.registerBtnText}>Comenzar registro</Text>
+              </Pressable>
+            </Link>
+          </LinearGradient>
         )}
 
-        {/* Bottom gradient for text readability */}
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.75)"]}
-          locations={[0, 0.4, 1]}
-          style={styles.heroGradient}
-          pointerEvents="none"
-        />
-
-        {/* Content overlay */}
-        <View style={styles.heroBody}>
-          {hasDogs ? (
-            <>
-              <View style={styles.badgeGreen}>
-                <MaterialCommunityIcons name="shield-check" size={12} color="#fff" />
-                <Text style={styles.badgeGreenText}>PROTEGIDO</Text>
-              </View>
-              <Text style={styles.heroHeadline}>{heroDog.name}</Text>
-              <Text style={styles.heroParagraph}>
-                {heroDog.breed ?? "Tu perro"} · Trufa verificada
-              </Text>
-              <Link href={`/dog/${heroDog.id}` as any} asChild>
-                <Pressable style={styles.heroCta}>
-                  <Text style={styles.heroCtaText}>Ver perfil biometrico</Text>
-                  <MaterialCommunityIcons name="arrow-right" size={16} color="#fff" />
-                </Pressable>
-              </Link>
-            </>
-          ) : (
-            <>
-              <View style={styles.badgeOrange}>
-                <Text style={styles.badgeOrangeText}>NUEVO EN PEANUT</Text>
-              </View>
-              <Text style={styles.heroHeadline}>Registra a tu{"\n"}perro</Text>
-              <Text style={styles.heroParagraph}>
-                Crea su perfil y registra su trufa para identificarlo de forma unica y segura.
-              </Text>
-              <Link href="/dog/new" asChild>
-                <Pressable style={styles.heroCta}>
-                  <Text style={styles.heroCtaText}>Registrar perro</Text>
-                  <MaterialCommunityIcons name="arrow-right" size={16} color="#fff" />
-                </Pressable>
-              </Link>
-            </>
-          )}
-        </View>
-      </View>
-
-      {/* ════════════════════════════════════════════
-          DOG SELECTOR (only when >1 dog)
-         ════════════════════════════════════════════ */}
-      {hasDogs && dogs.length > 1 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.dogChipsWrap}
-        >
-          {dogs.map((dog, i) => (
-            <Pressable
-              key={dog.id}
-              onPress={() => setSelectedIdx(i)}
-              style={[styles.dogChip, i === selectedIdx && styles.dogChipActive]}
-            >
-              {dog.photo ? (
-                <Image source={{ uri: dog.photo }} style={styles.dogChipAvatar} />
-              ) : (
-                <View style={styles.dogChipAvatarFallback}>
-                  <Text style={styles.dogChipInitial}>{dog.name.charAt(0)}</Text>
-                </View>
-              )}
-              <Text style={i === selectedIdx ? styles.dogChipNameActive : styles.dogChipName}>
-                {dog.name}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      )}
-
-      {/* ════════════════════════════════════════════
-          QUICK ACTIONS
-         ════════════════════════════════════════════ */}
-      <View style={styles.actions}>
-        <ActionItem
-          icon="qrcode-scan"
-          bg="#2d6482"
-          label="Escanear trufa"
-          href="/(tabs)/scan"
-        />
-        <ActionItem
-          icon="alert-circle-outline"
-          bg="#ba1a1a"
-          label="Reportar perdido"
-          href={heroDog ? (`/dog/${heroDog.id}` as any) : "/dog/new"}
-        />
-        <ActionItem
-          icon="paw"
-          bg="#006d3f"
-          label="Encontre un perro"
-          href="/(tabs)/feed"
-        />
-      </View>
-
-      {/* ════════════════════════════════════════════
-          COMMUNITY NEARBY
-         ════════════════════════════════════════════ */}
-      <View style={styles.community}>
-        <View style={styles.commHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.commHeading}>Comunidad cerca de ti</Text>
-            <Text style={styles.commSub}>Alertas activas en tu zona</Text>
+        {/* ── Cerca de ti ── */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Cerca de ti</Text>
+            <Link href="/(tabs)/feed">
+              <Text style={styles.sectionLink}>Ver mapa</Text>
+            </Link>
           </View>
-          <Link href="/(tabs)/feed">
-            <Text style={styles.commSeeAll}>Ver todo</Text>
+          <Link href="/(tabs)/feed" asChild>
+            <Pressable style={styles.nearbyRow}>
+              <View style={styles.nearbyIcon}>
+                <MaterialCommunityIcons
+                  name="map-marker"
+                  size={20}
+                  color="#fff"
+                />
+              </View>
+              <View style={styles.nearbyInfo}>
+                <Text style={styles.nearbyCount}>
+                  {lostReports.length} reportes activos
+                </Text>
+                <Text style={styles.nearbyDistance}>
+                  A menos de 2 km de distancia
+                </Text>
+              </View>
+              <MaterialCommunityIcons
+                name="arrow-right"
+                size={20}
+                color={ACCENT}
+              />
+            </Pressable>
           </Link>
         </View>
 
-        {lostReports.length === 0 ? (
-          <View style={styles.commEmpty}>
-            <MaterialCommunityIcons name="map-marker-check-outline" size={32} color={colors.outlineVariant} />
-            <Text style={styles.commEmptyText}>Todo tranquilo por aqui</Text>
-          </View>
-        ) : (
-          <View style={styles.commList}>
-            {lostReports.slice(0, 3).map((r) => (
-              <ReportRow key={r.id} report={r} />
+        {/* ── Actividad reciente ── */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Actividad reciente</Text>
+          <View style={styles.activityList}>
+            {recentActivity.map((item) => (
+              <View key={item.id} style={styles.activityItem}>
+                <View style={styles.activityDot} />
+                <View style={styles.activityInfo}>
+                  <Text style={styles.activityMsg}>{item.message}</Text>
+                  <Text style={styles.activityTime}>{item.time}</Text>
+                </View>
+              </View>
             ))}
           </View>
-        )}
+        </View>
       </View>
     </ScrollView>
   );
 }
 
-/* ── HERO IMAGE with loading state ── */
-const HeroImage = ({ uri }: { uri: string }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  if (error) {
-    return (
-      <View style={styles.heroImgPlaceholder}>
-        <MaterialCommunityIcons name="dog" size={80} color={colors.outlineVariant} />
-      </View>
-    );
-  }
-
-  return (
-    <>
-      {loading && (
-        <View style={styles.heroImgPlaceholder}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      )}
-      <Image
-        source={{ uri }}
-        style={[styles.heroImg, loading && { position: "absolute", opacity: 0 }]}
-        onLoad={() => setLoading(false)}
-        onError={() => setError(true)}
-      />
-    </>
-  );
-};
-
-/* ── ACTION ITEM ── */
-const ActionItem = ({
-  icon,
-  bg,
-  label,
-  href,
-}: {
-  icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
-  bg: string;
-  label: string;
-  href: string;
-}) => (
-  <Link href={href as any} asChild>
-    <Pressable style={styles.actionRow}>
-      <View style={[styles.actionCircle, { backgroundColor: bg }]}>
-        <MaterialCommunityIcons name={icon} size={20} color="#fff" />
-      </View>
-      <Text style={styles.actionLabel}>{label}</Text>
-      <MaterialCommunityIcons name="chevron-right" size={20} color={colors.outlineVariant} />
-    </Pressable>
-  </Link>
-);
-
-/* ── REPORT ROW ── */
-const ReportRow = ({ report }: { report: LostReport }) => {
-  const isLost = true;
-  return (
-    <Link href={`/dog/${report.dogId}` as any} asChild>
-      <Pressable style={styles.reportCard}>
-        {/* Photo */}
-        <View style={styles.reportImgWrap}>
-          {report.images?.[0] ? (
-            <Image source={{ uri: report.images[0] }} style={styles.reportImg} />
-          ) : (
-            <View style={[styles.reportImg, styles.reportImgFallback]}>
-              <MaterialCommunityIcons name="dog-side" size={30} color={colors.outlineVariant} />
-            </View>
-          )}
-        </View>
-        {/* Info */}
-        <View style={styles.reportInfo}>
-          <View style={styles.reportBadgeRow}>
-            <View style={[styles.reportBadge, isLost ? styles.reportBadgeLost : styles.reportBadgeFound]}>
-              <View style={[styles.reportDot, { backgroundColor: isLost ? colors.error : colors.tertiary }]} />
-              <Text style={[styles.reportBadgeText, { color: isLost ? colors.error : colors.tertiary }]}>
-                {isLost ? "PERDIDO" : "ENCONTRADO"}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.reportName}>{report.dogName}</Text>
-          <View style={styles.reportMeta}>
-            <MaterialCommunityIcons name="map-marker" size={13} color={colors.textMuted} />
-            <Text style={styles.reportMetaText} numberOfLines={1}>
-              {report.lastSeen.address ?? "Cerca de ti"}
-            </Text>
-          </View>
-          <Text style={styles.reportTime}>
-            {formatTimeAgo(report.lastSeen.time ?? new Date().toISOString())}
-          </Text>
-        </View>
-      </Pressable>
-    </Link>
-  );
-};
-
-const formatTimeAgo = (dateStr: string) => {
-  const now = Date.now();
-  const d = new Date(dateStr).getTime();
-  const m = Math.max(0, Math.floor((now - d) / 60000));
-  if (m < 1) return "Justo ahora";
-  if (m < 60) return `Hace ${m} min`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `Hace ${h} horas`;
-  return `Hace ${Math.floor(h / 24)} dias`;
-};
-
 /* ════════════════════ STYLES ════════════════════ */
-const HP = spacing.lg; // horizontal page padding
+const HP = spacing.lg;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: 40, gap: 24 },
+  content: { paddingBottom: 40 },
 
-  /* ── Hero ── */
-  heroCard: {
-    marginHorizontal: HP,
-    marginTop: 8,
-    height: CARD_H,
-    borderRadius: 32,
-    backgroundColor: colors.surfaceContainerHigh,
+  /* ── Header ── */
+  header: {
+    paddingHorizontal: HP + 4,
+    paddingBottom: 40,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  greeting: {
+    fontFamily: fonts.heading,
+    fontSize: 28,
+    color: "#fff",
+    marginBottom: 4,
+  },
+  greetingSub: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    color: "rgba(255,255,255,0.9)",
+  },
+
+  /* ── Body ── */
+  body: {
+    paddingHorizontal: HP,
+    marginTop: -16,
+    gap: 16,
+  },
+
+  /* ── Dog Card ── */
+  dogCard: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  heroGradient: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 1,
+  dogCardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
   },
-  heroImg: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
+  dogAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
-  heroImgPlaceholder: {
-    ...StyleSheet.absoluteFillObject,
+  dogAvatarFallback: {
+    backgroundColor: colors.surfaceContainerHigh,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.surfaceContainerHigh,
   },
-  heroBody: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 2,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-    gap: 4,
+  dogInfo: {
+    flex: 1,
+    gap: 2,
   },
-  badgeGreen: {
+  dogNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(62,172,112,0.85)",
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 100,
-    marginBottom: 4,
+    gap: 8,
   },
-  badgeGreenText: {
-    color: "#fff",
-    fontSize: 9,
-    fontFamily: fonts.bodySemiBold,
-    letterSpacing: 0.8,
-  },
-  badgeOrange: {
-    backgroundColor: colors.primary,
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 100,
-    marginBottom: 4,
-  },
-  badgeOrangeText: {
-    color: "#fff",
-    fontSize: 9,
-    fontFamily: fonts.bodySemiBold,
-    letterSpacing: 0.8,
-  },
-  heroHeadline: {
+  dogName: {
     fontFamily: fonts.heading,
-    fontSize: 32,
-    lineHeight: 38,
-    color: "#fff",
+    fontSize: 18,
+    color: colors.onSurface,
   },
-  heroParagraph: {
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 100,
+  },
+  statusSafe: {
+    backgroundColor: colors.tertiaryContainer,
+  },
+  statusLost: {
+    backgroundColor: colors.errorContainer,
+  },
+  statusText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+  },
+  dogBreed: {
     fontFamily: fonts.body,
     fontSize: 13,
-    lineHeight: 19,
-    color: "rgba(255,255,255,0.85)",
-    marginTop: 2,
+    color: colors.textMuted,
   },
-  heroCta: {
-    alignSelf: "flex-start",
-    marginTop: 12,
-    borderRadius: 100,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    flexDirection: "row",
+  dogArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
-    gap: 6,
-  },
-  heroCtaText: {
-    color: "#fff",
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
+    justifyContent: "center",
   },
 
   /* ── Dog chips ── */
-  dogChipsWrap: {
-    paddingHorizontal: HP,
-    gap: 8,
-  },
-  dogChip: {
+  chipsWrap: { gap: 8 },
+  chip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -413,16 +406,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.outlineVariant,
   },
-  dogChipActive: {
+  chipActive: {
     borderColor: colors.primary,
     backgroundColor: colors.primaryFixed,
   },
-  dogChipAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-  },
-  dogChipAvatarFallback: {
+  chipAvatar: { width: 30, height: 30, borderRadius: 15 },
+  chipAvatarFb: {
     width: 30,
     height: 30,
     borderRadius: 15,
@@ -430,162 +419,191 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dogChipInitial: {
+  chipInitial: {
     fontFamily: fonts.headingMedium,
     fontSize: 13,
     color: colors.primary,
   },
-  dogChipName: {
+  chipName: {
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
     color: colors.onSurface,
   },
-  dogChipNameActive: {
+  chipNameActive: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     color: colors.primary,
-    fontFamily: fonts.bodySemiBold,
   },
 
-  /* ── Action rows ── */
-  actions: {
-    paddingHorizontal: HP,
-    gap: 10,
-  },
-  actionRow: {
+  /* ── Quick Actions ── */
+  actionsGrid: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    gap: 12,
   },
-  actionCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  actionCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 10,
   },
-  actionLabel: {
-    flex: 1,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 15,
-    color: colors.onSurface,
-  },
-
-  /* ── Community ── */
-  community: {
-    paddingHorizontal: HP,
-    gap: 14,
-  },
-  commHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  commHeading: {
-    fontFamily: fonts.heading,
-    fontSize: 18,
-    color: colors.onSurface,
-  },
-  commSub: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  commSeeAll: {
+  actionTitle: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
-    color: colors.primary,
-    marginTop: 2,
+    color: colors.onSurface,
+    textAlign: "center",
+    marginBottom: 2,
   },
-  commEmpty: {
+  actionSub: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.textMuted,
+    textAlign: "center",
+  },
+
+  /* ── Register CTA ── */
+  registerCard: {
+    borderRadius: 24,
+    padding: 32,
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 32,
   },
-  commEmptyText: {
+  registerIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  registerTitle: {
+    fontFamily: fonts.heading,
+    fontSize: 20,
+    color: "#fff",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  registerSub: {
     fontFamily: fonts.body,
     fontSize: 14,
-    color: colors.textMuted,
+    color: "rgba(255,255,255,0.9)",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 24,
   },
-  commList: {
-    gap: 10,
+  registerBtn: {
+    backgroundColor: "#fff",
+    borderRadius: 100,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  registerBtnText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: ACCENT,
   },
 
-  /* ── Report card ── */
-  reportCard: {
+  /* ── Section card (shared) ── */
+  sectionCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  sectionHeader: {
     flexDirection: "row",
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: 22,
-    padding: 12,
-    gap: 12,
     alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
   },
-  reportImgWrap: {
+  sectionTitle: {
+    fontFamily: fonts.heading,
+    fontSize: 17,
+    color: colors.onSurface,
+  },
+  sectionLink: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: ACCENT,
+  },
+
+  /* ── Nearby ── */
+  nearbyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF4E6",
     borderRadius: 16,
-    overflow: "hidden",
+    padding: 14,
+    gap: 12,
   },
-  reportImg: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
-  },
-  reportImgFallback: {
-    backgroundColor: colors.surfaceContainerHigh,
+  nearbyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: ACCENT,
     alignItems: "center",
     justifyContent: "center",
   },
-  reportInfo: {
+  nearbyInfo: {
     flex: 1,
     gap: 2,
   },
-  reportBadgeRow: {
-    flexDirection: "row",
-  },
-  reportBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 100,
-  },
-  reportBadgeLost: {
-    backgroundColor: "rgba(186,26,26,0.10)",
-  },
-  reportBadgeFound: {
-    backgroundColor: "rgba(0,109,63,0.10)",
-  },
-  reportDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  reportBadgeText: {
-    fontSize: 9,
+  nearbyCount: {
     fontFamily: fonts.bodySemiBold,
-    letterSpacing: 0.6,
-  },
-  reportName: {
-    fontFamily: fonts.headingMedium,
-    fontSize: 15,
+    fontSize: 13,
     color: colors.onSurface,
-    marginTop: 1,
   },
-  reportMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  reportMetaText: {
+  nearbyDistance: {
     fontFamily: fonts.body,
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textMuted,
-    flex: 1,
   },
-  reportTime: {
+
+  /* ── Activity ── */
+  activityList: {
+    marginTop: 12,
+    gap: 12,
+  },
+  activityItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    paddingVertical: 4,
+  },
+  activityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: ACCENT,
+    marginTop: 5,
+  },
+  activityInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  activityMsg: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: colors.onSurface,
+  },
+  activityTime: {
     fontFamily: fonts.body,
     fontSize: 11,
     color: colors.textMuted,
