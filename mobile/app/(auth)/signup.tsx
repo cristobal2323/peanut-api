@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Link, useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
+
 import { Checkbox, Text, TextInput } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -79,15 +79,6 @@ export default function SignupScreen() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          <LinearGradient
-            colors={[colors.primaryContainer, colors.primary]}
-            start={[0, 0]}
-            end={[1, 1]}
-            style={styles.blobLarge}
-            pointerEvents="none"
-          />
-          <View style={styles.blobSmall} pointerEvents="none" />
-
           <FormikProvider value={formik}>
             <View style={styles.card}>
               <Text variant="headlineSmall" style={styles.title}>
@@ -237,26 +228,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     paddingVertical: spacing.xl,
-  },
-  blobLarge: {
-    position: "absolute",
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    top: -100,
-    right: -90,
-    opacity: 0.15,
-    transform: [{ rotate: "-12deg" }],
-  },
-  blobSmall: {
-    position: "absolute",
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: colors.primaryContainer,
-    opacity: 0.15,
-    top: 70,
-    left: 28,
   },
   card: {
     marginHorizontal: spacing.xl,

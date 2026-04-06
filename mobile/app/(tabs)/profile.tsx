@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import { View, ScrollView, StyleSheet, Pressable } from "react-native";
 import { Avatar, Button, Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -24,7 +24,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
       {/* User profile card */}
       <CardContainer style={styles.profileCard}>
         <View style={styles.header}>
@@ -87,7 +87,7 @@ export default function ProfileScreen() {
       </Button>
 
       <Text style={styles.version}>Peanut v2.4.0</Text>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -103,7 +103,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  contentContainer: {
     padding: spacing.xl,
+    paddingBottom: spacing.xl * 2,
   },
   profileCard: {
     padding: spacing.lg,

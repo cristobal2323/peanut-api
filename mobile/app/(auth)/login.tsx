@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Link, useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
+
 import { Text, TextInput } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
@@ -67,16 +67,6 @@ export default function LoginScreen() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          {/* Warm decorative blobs */}
-          <LinearGradient
-            colors={[colors.primaryContainer, colors.primary]}
-            start={[0, 0]}
-            end={[1, 1]}
-            style={styles.blobLarge}
-            pointerEvents="none"
-          />
-          <View style={styles.blobSmall} pointerEvents="none" />
-
           <View style={styles.heroLogo}>
             <Image
               source={require("../../assets/logo-peanut.png")}
@@ -204,26 +194,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     paddingVertical: spacing.xl,
-  },
-  blobLarge: {
-    position: "absolute",
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    top: -90,
-    right: -70,
-    opacity: 0.15,
-    transform: [{ rotate: "-15deg" }],
-  },
-  blobSmall: {
-    position: "absolute",
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: colors.primaryContainer,
-    opacity: 0.15,
-    top: 40,
-    left: 24,
   },
   heroLogo: {
     alignItems: "center",
