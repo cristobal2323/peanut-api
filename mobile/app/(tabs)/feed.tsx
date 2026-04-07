@@ -3,22 +3,18 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  Image,
   Pressable,
-  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { Text } from "react-native-paper";
 import { EmptyState } from "../../src/components/EmptyState";
+import { DogCard } from "../../src/components/DogCard";
 import { spacing, colors, radii, fonts } from "../../src/theme";
 import { api } from "../../src/api/mockApi";
 import { queryKeys } from "../../src/lib/queryClient";
-import { CommunityReport, ReportType } from "../../src/types";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CARD_IMAGE_HEIGHT = 220;
+import { CommunityReport } from "../../src/types";
 
 type FilterValue = "all" | "lost" | "found" | "recent";
 
@@ -142,7 +138,18 @@ export default function FeedScreen() {
         <EmptyState icon="map-marker-off" message="No hay reportes en esta categoría" />
       ) : (
         filtered.map((report) => (
-          <ReportCard key={report.id} report={report} />
+          <DogCard
+            key={report.id}
+            photo={report.photo}
+            name={report.dogName}
+            breed={report.breed}
+            description={report.description}
+            status={report.reportType === "found" ? "found" : "lost"}
+            distanceKm={report.distanceKm}
+            date={timeAgo(report.createdAt)}
+            location={report.location}
+            style={styles.cardSpacing}
+          />
         ))
       )}
 
@@ -150,67 +157,6 @@ export default function FeedScreen() {
     </ScrollView>
   );
 }
-
-const ReportCard = ({ report }: { report: CommunityReport }) => {
-  const badgeLabel = report.reportType === "found" ? "Encontrado" : "Perdido";
-  const badgeColor =
-    report.reportType === "found" ? colors.primaryContainer : colors.error;
-
-  return (
-    <View style={styles.card}>
-      {/* Image section */}
-      <View style={styles.cardImageWrapper}>
-        <Image source={{ uri: report.photo }} style={styles.cardImage} />
-
-        {/* Status badge */}
-        <View style={[styles.statusBadge, { backgroundColor: badgeColor }]}>
-          <Text style={styles.statusBadgeText}>{badgeLabel}</Text>
-        </View>
-
-        {/* Distance badge */}
-        <View style={styles.distanceBadge}>
-          <MaterialCommunityIcons
-            name="map-marker"
-            size={14}
-            color={colors.onPrimary}
-          />
-          <Text style={styles.distanceBadgeText}>
-            {report.distanceKm} km
-          </Text>
-        </View>
-      </View>
-
-      {/* Info section */}
-      <View style={styles.cardInfo}>
-        <Text style={styles.cardName}>{report.dogName}</Text>
-        <Text style={styles.cardBreed}>{report.breed}</Text>
-        {report.description ? (
-          <Text style={styles.cardDescription} numberOfLines={2}>
-            {report.description}
-          </Text>
-        ) : null}
-        <View style={styles.cardMeta}>
-          <View style={styles.cardMetaItem}>
-            <MaterialCommunityIcons
-              name="calendar-outline"
-              size={14}
-              color={colors.textMuted}
-            />
-            <Text style={styles.cardMetaText}>{timeAgo(report.createdAt)}</Text>
-          </View>
-          <View style={styles.cardMetaItem}>
-            <MaterialCommunityIcons
-              name="map-marker-outline"
-              size={14}
-              color={colors.textMuted}
-            />
-            <Text style={styles.cardMetaText}>{report.location}</Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-};
 
 const styles = StyleSheet.create({
   container: {
@@ -317,91 +263,8 @@ const styles = StyleSheet.create({
   },
 
   // Cards
-  card: {
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radii.xl,
+  cardSpacing: {
     marginBottom: spacing.md,
-    overflow: "hidden",
-    shadowColor: colors.onSurface,
-    shadowOpacity: 0.06,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 2,
-  },
-  cardImageWrapper: {
-    position: "relative",
-  },
-  cardImage: {
-    width: "100%",
-    height: CARD_IMAGE_HEIGHT,
-    backgroundColor: colors.surfaceContainerHigh,
-  },
-  statusBadge: {
-    position: "absolute",
-    top: spacing.md,
-    right: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radii.full,
-  },
-  statusBadgeText: {
-    fontSize: 13,
-    fontFamily: fonts.bodySemiBold,
-    color: colors.onPrimary,
-  },
-  distanceBadge: {
-    position: "absolute",
-    bottom: spacing.md,
-    left: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(30, 27, 19, 0.6)",
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 1,
-    borderRadius: radii.full,
-  },
-  distanceBadgeText: {
-    fontSize: 12,
-    fontFamily: fonts.bodyMedium,
-    color: colors.onPrimary,
-  },
-  cardInfo: {
-    padding: spacing.md,
-  },
-  cardName: {
-    fontSize: 18,
-    fontFamily: fonts.heading,
-    color: colors.onSurface,
-  },
-  cardBreed: {
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  cardDescription: {
-    fontSize: 14,
-    fontFamily: fonts.body,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-    lineHeight: 20,
-  },
-  cardMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    marginTop: spacing.sm + 2,
-  },
-  cardMetaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  cardMetaText: {
-    fontSize: 12,
-    fontFamily: fonts.body,
-    color: colors.textMuted,
   },
 
   loading: {

@@ -18,7 +18,9 @@ import { useDogsStore } from "../../src/store/dogs";
 import { api } from "../../src/api/mockApi";
 import { queryKeys } from "../../src/lib/queryClient";
 
-const ACCENT = "#F59E42";
+// Local alias kept for readability in styles below.
+// Mirrors the global theme primary so any palette change propagates.
+const ACCENT = colors.primary;
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();

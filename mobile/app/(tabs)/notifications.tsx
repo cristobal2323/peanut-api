@@ -1,17 +1,60 @@
-import React from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+} from "react-native";
+import { Text } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Text, Badge } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { EmptyState } from "../../src/components/EmptyState";
+import { IconCircle } from "../../src/components/IconCircle";
+import { spacing, colors, fonts, radii } from "../../src/theme";
 import { api } from "../../src/api/mockApi";
 import { queryKeys } from "../../src/lib/queryClient";
-import { AppNotification } from "../../src/types";
-import { EmptyState } from "../../src/components/EmptyState";
-import { spacing, colors, radii, fonts } from "../../src/theme";
-import { Pressable } from "react-native";
+import { AppNotification, NotificationKind } from "../../src/types";
+
+type Filter = "all" | "unread";
+
+const META: Record<
+  NotificationKind,
+  { icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string; tintBg: string }
+> = {
+  match: {
+    icon: "heart-pulse",
+    color: colors.accentPurple,
+    tintBg: "rgba(139,92,246,0.06)",
+  },
+  sighting: {
+    icon: "map-marker",
+    color: colors.error,
+    tintBg: "rgba(239,68,68,0.05)",
+  },
+  system: {
+    icon: "information-outline",
+    color: colors.secondary,
+    tintBg: "rgba(59,130,246,0.05)",
+  },
+};
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Ahora";
+  if (mins < 60) return `Hace ${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Hace ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `Hace ${days}d`;
+}
 
 export default function NotificationsScreen() {
-  const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState<Filter>("all");
+
   const { data: notifications = [] } = useQuery({
     queryKey: queryKeys.notifications,
     queryFn: api.fetchNotifications,
@@ -19,109 +62,243 @@ export default function NotificationsScreen() {
 
   const mutation = useMutation({
     mutationFn: api.markNotificationAsRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.notifications }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications }),
   });
 
-  const iconFor = (type: AppNotification["type"]): string => {
-    switch (type) {
-      case "match":
-        return "paw";
-      case "sighting":
-        return "map-marker";
-      default:
-        return "bell-outline";
-    }
-  };
+  const markAll = useMutation({
+    mutationFn: api.markAllNotificationsAsRead,
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications }),
+  });
 
-  const iconColor = (type: AppNotification["type"]) => {
-    switch (type) {
-      case "match":
-        return colors.tertiary;
-      case "sighting":
-        return colors.secondary;
-      default:
-        return colors.primary;
-    }
-  };
+  const unread = useMemo(
+    () => notifications.filter((n) => !n.read).length,
+    [notifications]
+  );
+
+  const filtered = useMemo(() => {
+    if (filter === "unread") return notifications.filter((n) => !n.read);
+    return notifications;
+  }, [notifications, filter]);
 
   return (
-    <View style={styles.container}>
-      <Text variant="headlineSmall" style={styles.title}>
-        Notificaciones
-      </Text>
-      {notifications.length === 0 ? (
-        <EmptyState icon="bell-outline" message="Sin alertas nuevas" />
-      ) : (
-        <FlatList
-          data={notifications}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Pressable
-              style={[styles.notifCard, !item.read && styles.unreadCard]}
-              onPress={() => mutation.mutate(item.id)}
-            >
-              <View style={[styles.notifIcon, { backgroundColor: `${iconColor(item.type)}15` }]}>
-                <MaterialCommunityIcons
-                  name={iconFor(item.type) as any}
-                  size={22}
-                  color={iconColor(item.type)}
-                />
-              </View>
-              <View style={styles.notifContent}>
-                <Text variant="titleSmall" style={{ color: colors.onSurface }}>{item.title}</Text>
-                <Text style={styles.notifMessage}>{item.message}</Text>
-              </View>
-              {!item.read && <Badge style={styles.badge} size={10}>{""}</Badge>}
-            </Pressable>
-          )}
-          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-        />
-      )}
+    <View style={[styles.screen, { paddingTop: insets.top + spacing.md }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>Alertas</Text>
+          <Text style={styles.subtitle}>
+            {unread > 0
+              ? `Tienes ${unread} sin leer`
+              : "Estás al día"}
+          </Text>
+        </View>
+        {unread > 0 && (
+          <View style={styles.unreadBadge}>
+            <Text style={styles.unreadBadgeText}>{unread}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Filters */}
+      <View style={styles.filterRow}>
+        <Pressable
+          style={[styles.chip, filter === "all" && styles.chipActive]}
+          onPress={() => setFilter("all")}
+        >
+          <Text style={[styles.chipText, filter === "all" && styles.chipTextActive]}>
+            Todas
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.chip, filter === "unread" && styles.chipActive]}
+          onPress={() => setFilter("unread")}
+        >
+          <Text style={[styles.chipText, filter === "unread" && styles.chipTextActive]}>
+            No leídas{unread > 0 ? ` (${unread})` : ""}
+          </Text>
+        </Pressable>
+        {unread > 0 && (
+          <Pressable
+            style={styles.markAllBtn}
+            onPress={() => markAll.mutate()}
+          >
+            <MaterialCommunityIcons name="check-all" size={16} color={colors.primary} />
+            <Text style={styles.markAllText}>Marcar todas</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* List */}
+      <ScrollView
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+      >
+        {filtered.length === 0 ? (
+          <EmptyState
+            icon="bell-off-outline"
+            message={filter === "unread" ? "No tienes alertas sin leer" : "Sin alertas nuevas"}
+          />
+        ) : (
+          filtered.map((item) => (
+            <NotifCard
+              key={item.id}
+              item={item}
+              onPress={() => !item.read && mutation.mutate(item.id)}
+            />
+          ))
+        )}
+      </ScrollView>
     </View>
   );
 }
 
+function NotifCard({
+  item,
+  onPress,
+}: {
+  item: AppNotification;
+  onPress: () => void;
+}) {
+  const meta = META[item.type];
+  return (
+    <Pressable
+      style={[
+        styles.card,
+        { backgroundColor: meta.tintBg },
+        !item.read && [styles.unread, { borderLeftColor: meta.color }],
+      ]}
+      onPress={onPress}
+    >
+      <IconCircle icon={meta.icon} color={meta.color} size={44} />
+      <View style={{ flex: 1 }}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <Text style={styles.cardTime}>{timeAgo(item.createdAt)}</Text>
+        </View>
+        <Text style={styles.cardMessage}>{item.message}</Text>
+      </View>
+      {!item.read && item.type === "sighting" && (
+        <MaterialCommunityIcons name="alert-circle" size={18} color={colors.error} />
+      )}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.xl,
   },
-  title: {
-    marginBottom: spacing.md,
-    color: colors.onSurface,
-    fontFamily: fonts.heading,
-  },
-  notifCard: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radii.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
   },
-  unreadCard: {
-    backgroundColor: colors.primaryFixed,
+  title: {
+    fontFamily: fonts.heading,
+    fontSize: 28,
+    color: colors.onSurface,
   },
-  notifIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  notifContent: {
-    flex: 1,
-    gap: 2,
-  },
-  notifMessage: {
-    color: colors.textMuted,
+  subtitle: {
     fontFamily: fonts.body,
     fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
   },
-  badge: {
+  unreadBadge: {
+    backgroundColor: colors.error,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.full,
+  },
+  unreadBadgeText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: "#ffffff",
+  },
+
+  // Filters
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  chip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  chipActive: {
     backgroundColor: colors.primary,
-    alignSelf: "flex-start",
+    borderColor: colors.primary,
+  },
+  chipText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: colors.onSurface,
+  },
+  chipTextActive: {
+    color: "#ffffff",
+    fontFamily: fonts.bodySemiBold,
+  },
+  markAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginLeft: "auto",
+  },
+  markAllText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
+  },
+
+  // List
+  list: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxl,
+    gap: spacing.sm + 2,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  unread: {
+    borderLeftWidth: 4,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  cardTitle: {
+    flex: 1,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.onSurface,
+  },
+  cardTime: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  cardMessage: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.textSecondary,
     marginTop: 4,
+    lineHeight: 18,
   },
 });

@@ -25,24 +25,22 @@ import { initSentry } from "../src/lib/sentry";
 SplashScreen.preventAutoHideAsync();
 
 const RootLayoutNav = () => (
-  <Stack screenOptions={{ headerShown: false }}>
+  <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
     <Stack.Screen name="(auth)" />
     <Stack.Screen name="(tabs)" />
-    <Stack.Screen
-      name="dog/[id]"
-      options={{
-        headerShown: true,
-        title: "Perfil",
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.onPrimary,
-        headerTitleStyle: { color: colors.onPrimary },
-        headerBackButtonDisplayMode: "minimal",
-      }}
-    />
+    <Stack.Screen name="dog/[id]" />
     <Stack.Screen name="dog/new" options={{ presentation: "modal" }} />
+    <Stack.Screen name="dog/edit/[id]" />
+    <Stack.Screen name="scan" />
+    <Stack.Screen name="report-lost/[dogId]" />
+    <Stack.Screen name="report/[id]" />
+    <Stack.Screen name="found-dog" />
+    <Stack.Screen name="map" />
+    <Stack.Screen name="settings" />
+    <Stack.Screen name="profile/edit" />
     <Stack.Screen
       name="report-sighting"
-      options={{ title: "Reportar avistamiento", presentation: "modal" }}
+      options={{ presentation: "modal" }}
     />
   </Stack>
 );

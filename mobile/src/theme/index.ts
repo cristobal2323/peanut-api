@@ -13,67 +13,86 @@ const fontConfig = {
   fontFamily: fonts.body,
 } as const;
 
-// Editorial Biometrics — Design System Colors
-// Source: DESIGN.md / Stitch Project "Peanut MVP"
+// Peanut Design System — sourced from cristobal2323/Peanutappdesign (Figma Make export)
+// Primary accent: #F59E42 (peanut orange)
 export const colors = {
-  primary: "#a23f00",
-  primaryContainer: "#fa7025",
-  primaryFixed: "#ffdbcd",
-  primaryFixedDim: "#ffb595",
+  // ── Primary (Peanut Orange) ──
+  primary: "#F59E42",
+  primaryContainer: "#FFF4E6",
+  primaryFixed: "#FFE9D1",
+  primaryFixedDim: "#E58D31",
   onPrimary: "#ffffff",
-  onPrimaryContainer: "#591f00",
+  onPrimaryContainer: "#7A4A10",
 
-  secondary: "#2d6482",
-  secondaryContainer: "#a7dbfe",
-  secondaryFixed: "#c6e7ff",
+  // ── Secondary (Blue — "found" / map / info) ──
+  secondary: "#3B82F6",
+  secondaryContainer: "rgba(59,130,246,0.10)",
+  secondaryFixed: "rgba(59,130,246,0.20)",
   onSecondary: "#ffffff",
-  onSecondaryContainer: "#29617f",
+  onSecondaryContainer: "#1E3A8A",
 
-  tertiary: "#006d3f",
-  tertiaryContainer: "#3eac70",
-  tertiaryFixed: "#8cf8b5",
+  // ── Tertiary (Green — "safe" / success) ──
+  tertiary: "#10B981",
+  tertiaryContainer: "rgba(16,185,129,0.10)",
+  tertiaryFixed: "rgba(16,185,129,0.20)",
   onTertiary: "#ffffff",
-  onTertiaryContainer: "#00391f",
+  onTertiaryContainer: "#065F46",
 
-  error: "#ba1a1a",
-  errorContainer: "#ffdad6",
+  // ── Error (Red — "lost" / destructive) ──
+  error: "#EF4444",
+  errorContainer: "rgba(239,68,68,0.06)",
   onError: "#ffffff",
-  onErrorContainer: "#93000a",
+  onErrorContainer: "#7F1D1D",
 
-  background: "#fff8ef",
-  onBackground: "#1e1b13",
+  // ── Surfaces ──
+  background: "#FAFAFA",
+  onBackground: "#030213",
 
-  surface: "#fff8ef",
-  surfaceBright: "#fff8ef",
-  surfaceDim: "#e1d9cb",
+  surface: "#FAFAFA",
+  surfaceBright: "#ffffff",
+  surfaceDim: "#f0f0f3",
   surfaceContainerLowest: "#ffffff",
-  surfaceContainerLow: "#fbf3e4",
-  surfaceContainer: "#f5edde",
-  surfaceContainerHigh: "#efe7d9",
-  surfaceContainerHighest: "#e9e2d3",
-  surfaceVariant: "#e9e2d3",
-  onSurface: "#1e1b13",
-  onSurfaceVariant: "#564337",
-  surfaceTint: "#a23f00",
+  surfaceContainerLow: "#f3f3f5",
+  surfaceContainer: "#ececf0",
+  surfaceContainerHigh: "#e9ebef",
+  surfaceContainerHighest: "#e1e3e8",
+  surfaceVariant: "#f3f3f5",
 
-  outline: "#897365",
-  outlineVariant: "#dcc1b1",
+  // ── Text ──
+  onSurface: "#030213",
+  onSurfaceVariant: "#717182",
+  surfaceTint: "#F59E42",
 
-  inverseSurface: "#343026",
-  inverseOnSurface: "#f8f0e1",
-  inversePrimary: "#ffb595",
+  // ── Outlines ──
+  outline: "rgba(0,0,0,0.10)",
+  outlineVariant: "rgba(0,0,0,0.06)",
 
-  // Semantic aliases
-  textPrimary: "#1e1b13",
-  textSecondary: "#564337",
-  textMuted: "#897365",
+  // ── Inverse ──
+  inverseSurface: "#1f1f23",
+  inverseOnSurface: "#FAFAFA",
+  inversePrimary: "#FFE9D1",
+
+  // ── Semantic aliases (legacy compatibility) ──
+  textPrimary: "#030213",
+  textSecondary: "#3F3F46",
+  textMuted: "#717182",
   cardBackground: "#ffffff",
-  ghostBorder: "rgba(220, 193, 177, 0.20)",
+  ghostBorder: "rgba(0,0,0,0.06)",
+
+  // ── Extra accents (for status badges, banners) ──
+  accentPurple: "#8B5CF6",
+  accentPurpleContainer: "rgba(139,92,246,0.10)",
+  accentBlue: "#3B82F6",
+  accentBlueContainer: "rgba(59,130,246,0.10)",
+  accentGreen: "#10B981",
+  accentGreenContainer: "rgba(16,185,129,0.10)",
+  accentAmber: "#F59E0B",
+  accentAmberContainer: "rgba(245,158,11,0.10)",
 };
 
 export const PeanutTheme = {
   ...MD3LightTheme,
-  roundness: 24,
+  roundness: 14,
   fonts: configureFonts({ config: { fontFamily: fonts.body } }),
   colors: {
     ...MD3LightTheme.colors,
@@ -114,7 +133,7 @@ export const PeanutTheme = {
   },
 };
 
-// Spacing scale (factor 3 — spacious)
+// Spacing scale
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -127,18 +146,27 @@ export const spacing = {
 // Corner radius tokens
 export const radii = {
   sm: 8,
-  md: 16,     // ~1rem — min for inputs/small containers
-  lg: 20,     // ~1.25rem — list capsules
-  xl: 28,     // ~1.75rem — primary cards
-  xxl: 36,    // ~2.25rem — biometric cards
-  full: 9999, // pills, buttons
+  md: 14,        // base — design uses rounded-[14px] on inputs/buttons
+  inputFocus: 14,
+  lg: 20,        // section cards
+  xl: 24,        // primary cards
+  xxl: 32,       // hero/biometric cards
+  full: 9999,    // pills, buttons
 };
 
-// Ambient shadow preset (Editorial Biometrics spec)
+// Ambient shadow preset
 export const ambientShadow = {
-  shadowColor: "#1e1b13",
+  shadowColor: "#030213",
   shadowOpacity: 0.06,
   shadowRadius: 24,
   shadowOffset: { width: 0, height: 12 },
   elevation: 2,
+};
+
+export const cardShadow = {
+  shadowColor: "#000",
+  shadowOpacity: 0.04,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 1,
 };

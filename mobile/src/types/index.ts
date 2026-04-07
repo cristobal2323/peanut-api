@@ -1,4 +1,4 @@
-export type DogStatus = "normal" | "lost";
+export type DogStatus = "normal" | "lost" | "found";
 
 export type DogSize = "small" | "medium" | "large";
 
@@ -92,4 +92,55 @@ export interface AuthResponse {
   refreshToken?: string;
   refreshExpiresIn?: string | number;
   user: User;
+}
+
+// ─── New types for redesigned screens ─────────────────────────────
+
+export interface UserStats {
+  dogs: number;
+  reports: number;
+  helps: number;
+}
+
+export interface MapPin {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  photo?: string;
+  status: "lost" | "found";
+  distanceKm: number;
+  reportType?: ReportType;
+  breed?: string;
+  location?: string;
+}
+
+export interface FoundReport {
+  id: string;
+  photo?: string;
+  noseScanned: boolean;
+  location: { latitude: number; longitude: number; address?: string };
+  comment?: string;
+  createdAt: string;
+}
+
+export interface MatchBreakdown {
+  label: string;
+  value: number;
+  color: string;
+}
+
+export interface MatchResult {
+  id: string;
+  confidence: number; // 0..100
+  registeredDog: Dog;
+  foundReport: FoundReport;
+  breakdown: MatchBreakdown[];
+  owner?: { name: string; phone?: string; avatar?: string };
+}
+
+export interface BiometricScanResult {
+  matchId: string | null;
+  quality: "good" | "poor";
+  imageUri: string;
 }
