@@ -40,22 +40,21 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.screen}>
+      <GradientHeader
+        title="Mi Perfil"
+        subtitle="Gestiona tu cuenta y tus perros"
+        right={
+          <Link href="/settings" asChild>
+            <Pressable style={styles.settingsBtn}>
+              <MaterialCommunityIcons name="cog-outline" size={22} color="#ffffff" />
+            </Pressable>
+          </Link>
+        }
+      />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <GradientHeader
-          title="Mi Perfil"
-          subtitle="Gestiona tu cuenta y tus perros"
-          right={
-            <Link href="/settings" asChild>
-              <Pressable style={styles.settingsBtn}>
-                <MaterialCommunityIcons name="cog-outline" size={22} color="#ffffff" />
-              </Pressable>
-            </Link>
-          }
-        />
-
         {/* Overlap user card */}
         <View style={styles.body}>
           <View style={styles.userCard}>
@@ -263,7 +262,7 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: spacing.lg,
-    marginTop: -spacing.xl - spacing.sm,
+    paddingTop: spacing.lg,
     gap: spacing.md,
   },
 

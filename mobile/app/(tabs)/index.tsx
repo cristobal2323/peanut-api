@@ -51,12 +51,8 @@ export default function HomeScreen() {
   ];
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* ── Gradient Header ── */}
+    <View style={styles.screen}>
+      {/* ── Gradient Header (FIXED) ── */}
       <LinearGradient
         colors={[ACCENT, `${ACCENT}E6`]}
         style={[styles.header, { paddingTop: insets.top + spacing.lg }]}
@@ -69,7 +65,11 @@ export default function HomeScreen() {
         </Text>
       </LinearGradient>
 
-      {/* ── Body (overlaps header slightly) ── */}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+      {/* ── Body ── */}
       <View style={styles.body}>
         {hasDogs ? (
           <>
@@ -288,7 +288,8 @@ export default function HomeScreen() {
           </View>
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
   /* ── Body ── */
   body: {
     paddingHorizontal: HP,
-    marginTop: -16,
+    paddingTop: 20,
     gap: 16,
   },
 

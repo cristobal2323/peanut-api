@@ -85,6 +85,7 @@ export default function TabsLayout() {
         name="scan"
         options={{
           title: "Escanear",
+          headerShown: false,
           tabBarIcon: () => <ScanTabIcon />,
           tabBarLabelStyle: {
             fontSize: 11,
@@ -98,6 +99,7 @@ export default function TabsLayout() {
         name="notifications"
         options={{
           title: "Alertas",
+          headerShown: false,
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="bell-outline" color={color} size={size} focused={focused} />,
         }}
       />
@@ -105,6 +107,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: "Perfil",
+          headerShown: false,
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="account-outline" color={color} size={size} focused={focused} />,
         }}
       />
