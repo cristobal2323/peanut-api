@@ -59,102 +59,106 @@ export default function FeedScreen() {
   const activeCount = reports.length;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md }]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.title}>Comunidad</Text>
-          <Text style={styles.subtitle}>
-            Ayuda a reunir a las familias con sus mascotas
-          </Text>
+    <View style={styles.container}>
+      {/* ── Sticky header ── */}
+      <View style={[styles.stickyHeader, { paddingTop: insets.top + spacing.md }]}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.title}>Comunidad</Text>
+            <Text style={styles.subtitle}>
+              Ayuda a reunir a las familias con sus mascotas
+            </Text>
+          </View>
+          <Pressable
+            style={styles.filterButton}
+            onPress={() => {
+              setShowFilters((v) => !v);
+              if (showFilters) setActiveFilter("all");
+            }}
+          >
+            <MaterialCommunityIcons
+              name={showFilters ? "filter-variant-remove" : "filter-variant"}
+              size={22}
+              color={colors.onSurface}
+            />
+          </Pressable>
         </View>
-        <Pressable
-          style={styles.filterButton}
-          onPress={() => {
-            setShowFilters((v) => !v);
-            if (showFilters) setActiveFilter("all");
-          }}
-        >
-          <MaterialCommunityIcons
-            name={showFilters ? "filter-variant-remove" : "filter-variant"}
-            size={22}
-            color={colors.onSurface}
-          />
-        </Pressable>
-      </View>
 
-      {/* Filter chips */}
-      {showFilters && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersRow}
-          style={styles.filtersScroll}
-        >
-          {FILTERS.map((f) => {
-            const active = activeFilter === f.value;
-            return (
-              <Pressable
-                key={f.value}
-                onPress={() => setActiveFilter(f.value)}
-                style={[styles.chip, active && styles.chipActive]}
-              >
-                <Text
-                  style={[styles.chipText, active && styles.chipTextActive]}
+        {/* Filter chips */}
+        {showFilters && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersRow}
+            style={styles.filtersScroll}
+          >
+            {FILTERS.map((f) => {
+              const active = activeFilter === f.value;
+              return (
+                <Pressable
+                  key={f.value}
+                  onPress={() => setActiveFilter(f.value)}
+                  style={[styles.chip, active && styles.chipActive]}
                 >
-                  {f.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      )}
-
-      {/* Active reports banner */}
-      <View style={styles.banner}>
-        <View style={styles.bannerIcon}>
-          <MaterialCommunityIcons
-            name="map-marker-radius"
-            size={24}
-            color={colors.primaryContainer}
-          />
-        </View>
-        <View style={styles.bannerText}>
-          <Text style={styles.bannerTitle}>
-            {activeCount} reportes activos
-          </Text>
-          <Text style={styles.bannerSubtitle}>En tu área (radio de 5 km)</Text>
-        </View>
+                  <Text
+                    style={[styles.chipText, active && styles.chipTextActive]}
+                  >
+                    {f.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
       </View>
 
-      {/* Report cards */}
-      {isLoading ? (
-        <Text style={styles.loading}>Cargando...</Text>
-      ) : filtered.length === 0 ? (
-        <EmptyState icon="map-marker-off" message="No hay reportes en esta categoría" />
-      ) : (
-        filtered.map((report) => (
-          <DogCard
-            key={report.id}
-            photo={report.photo}
-            name={report.dogName}
-            breed={report.breed}
-            description={report.description}
-            status={report.reportType === "found" ? "found" : "lost"}
-            distanceKm={report.distanceKm}
-            date={timeAgo(report.createdAt)}
-            location={report.location}
-            style={styles.cardSpacing}
-          />
-        ))
-      )}
+      {/* ── Scrollable content ── */}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Active reports banner */}
+        <View style={styles.banner}>
+          <View style={styles.bannerIcon}>
+            <MaterialCommunityIcons
+              name="map-marker-radius"
+              size={24}
+              color={colors.primaryContainer}
+            />
+          </View>
+          <View style={styles.bannerText}>
+            <Text style={styles.bannerTitle}>
+              {activeCount} reportes activos
+            </Text>
+            <Text style={styles.bannerSubtitle}>En tu área (radio de 5 km)</Text>
+          </View>
+        </View>
 
-      <View style={{ height: spacing.xxl }} />
-    </ScrollView>
+        {/* Report cards */}
+        {isLoading ? (
+          <Text style={styles.loading}>Cargando...</Text>
+        ) : filtered.length === 0 ? (
+          <EmptyState icon="map-marker-off" message="No hay reportes en esta categoría" />
+        ) : (
+          filtered.map((report) => (
+            <DogCard
+              key={report.id}
+              photo={report.photo}
+              name={report.dogName}
+              breed={report.breed}
+              description={report.description}
+              status={report.reportType === "found" ? "found" : "lost"}
+              distanceKm={report.distanceKm}
+              date={timeAgo(report.createdAt)}
+              location={report.location}
+              style={styles.cardSpacing}
+            />
+          ))
+        )}
+
+        <View style={{ height: spacing.xxl }} />
+      </ScrollView>
+    </View>
   );
 }
 
@@ -162,6 +166,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  stickyHeader: {
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.lg,
+    zIndex: 10,
   },
   content: {
     paddingHorizontal: spacing.lg,
@@ -211,8 +220,8 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant,
   },
   chipActive: {
-    backgroundColor: colors.primaryContainer,
-    borderColor: colors.primaryContainer,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   chipText: {
     fontSize: 14,

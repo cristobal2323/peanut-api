@@ -242,11 +242,11 @@ export default function HomeScreen() {
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Cerca de ti</Text>
-            <Link href="/(tabs)/feed">
+            <Link href="/map">
               <Text style={styles.sectionLink}>Ver mapa</Text>
             </Link>
           </View>
-          <Link href="/(tabs)/feed" asChild>
+          <Link href="/map" asChild>
             <Pressable style={styles.nearbyRow}>
               <View style={styles.nearbyIcon}>
                 <MaterialCommunityIcons
