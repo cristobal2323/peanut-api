@@ -20,9 +20,10 @@ type Phase = "permission" | "framing" | "captured" | "saving";
 
 export default function ScanNoseScreen() {
   const router = useRouter();
-  const { dogId, fromRegister } = useLocalSearchParams<{
+  const { dogId, fromRegister, fromIdentify } = useLocalSearchParams<{
     dogId?: string;
     fromRegister?: string;
+    fromIdentify?: string;
   }>();
   const insets = useSafeAreaInsets();
   const cameraRef = useRef<CameraView | null>(null);
@@ -31,6 +32,7 @@ export default function ScanNoseScreen() {
   const [phase, setPhase] = useState<Phase>("framing");
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const [quality, setQuality] = useState<"good" | "poor" | null>(null);
+  const [matchId, setMatchId] = useState<string | null>(null);
 
   const requestCameraPerm = async () => {
     const res = await requestPermission();
@@ -52,6 +54,7 @@ export default function ScanNoseScreen() {
       setCapturedUri(photo.uri);
       const result = await api.runBiometricScan(photo.uri, dogId);
       setQuality(result.quality);
+      setMatchId(result.matchId);
       setPhase("captured");
     } catch (e) {
       Alert.alert("Error", "No pudimos capturar la imagen.");
@@ -61,17 +64,28 @@ export default function ScanNoseScreen() {
   const retake = () => {
     setCapturedUri(null);
     setQuality(null);
+    setMatchId(null);
     setPhase("framing");
   };
 
   const confirm = async () => {
     setPhase("saving");
-    // The mock already ran when we captured, but in real backend we'd POST here.
     setTimeout(() => {
-      router.replace({
-        pathname: "/scan/confirmation",
-        params: { dogId: dogId ?? "" },
-      });
+      if (fromIdentify === "true") {
+        if (matchId) {
+          router.replace({
+            pathname: "/scan/match/[id]",
+            params: { id: matchId },
+          });
+        } else {
+          router.replace("/scan/match/no-match");
+        }
+      } else {
+        router.replace({
+          pathname: "/scan/confirmation",
+          params: { dogId: dogId ?? "" },
+        });
+      }
     }, 500);
   };
 

@@ -9,6 +9,7 @@ import {
   FoundReport,
   UserStats,
   BiometricScanResult,
+  AppearanceSearchResult,
   User,
 } from "../types";
 import { useDogsStore } from "../store/dogs";
@@ -463,6 +464,17 @@ export const api = {
   async fetchMatch(id: string): Promise<MatchResult | undefined> {
     await delay();
     return matches[id];
+  },
+
+  // ── Appearance search ───────────────────────────────
+  async searchByAppearance(_imageUri: string): Promise<AppearanceSearchResult> {
+    await delay(2000);
+    return {
+      candidates: [
+        { matchId: "m1", dog: sampleDogs[1], confidence: 72 },
+        { matchId: "m-low", dog: sampleDogs[0], confidence: 45 },
+      ],
+    };
   },
 
   // ── Map ──────────────────────────────────────────────

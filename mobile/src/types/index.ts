@@ -144,3 +144,13 @@ export interface BiometricScanResult {
   quality: "good" | "poor";
   imageUri: string;
 }
+
+export interface AppearanceCandidate {
+  matchId: string;
+  dog: Dog;
+  confidence: number;
+}
+
+export interface AppearanceSearchResult {
+  candidates: AppearanceCandidate[];
+}
