@@ -3,14 +3,18 @@ import { ExpoConfig, ConfigContext } from "expo/config";
 const androidConfig: ExpoConfig["android"] = {
   package: "com.cristobal2323.peanut",
   versionCode: 1,
+  adaptiveIcon: {
+    foregroundImage: "./assets/icon.png",
+    backgroundColor: "#FFFFFF",
+  },
 };
 
 export default ({ config }: ConfigContext): ExpoConfig =>
   ({
     ...config,
-    name: "Peanut",
-    slug: "peanut",
-    scheme: "peanut",
+    name: "Trufa ID",
+    slug: "trufa-id",
+    scheme: "trufaid",
     version: "0.1.0",
     orientation: "portrait",
     userInterfaceStyle: "light",
@@ -19,7 +23,7 @@ export default ({ config }: ConfigContext): ExpoConfig =>
     splash: {
       image: "./assets/splash.png",
       resizeMode: "contain",
-      backgroundColor: "#F59E42",
+      backgroundColor: "#FFFFFF",
     },
     assetBundlePatterns: ["**/*"],
     experiments: {
@@ -52,14 +56,14 @@ export default ({ config }: ConfigContext): ExpoConfig =>
         "expo-location",
         {
           locationAlwaysAndWhenInUsePermission:
-            "Allow Peanut to use your location to find nearby lost dogs and sightings.",
+            "Allow Trufa ID to use your location to find nearby lost dogs and sightings.",
         },
       ],
       [
         "expo-camera",
         {
           cameraPermission:
-            "Allow Peanut to access your camera for dog scanning.",
+            "Allow Trufa ID to access your camera for dog scanning.",
         },
       ],
       "./plugins/withCleartextTraffic",

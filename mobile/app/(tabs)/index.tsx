@@ -40,7 +40,7 @@ export default function HomeScreen() {
       id: "1",
       message: heroDog
         ? `Trufa de ${heroDog.name} escaneada correctamente`
-        : "Bienvenido a Peanut",
+        : "Bienvenido a Trufa ID",
       time: "Hace 2 dias",
     },
     {

@@ -25,14 +25,14 @@ const SLIDES: Slide[] = [
     icon: "paw",
     title: "Identifica con la huella nasal",
     subtitle:
-      "La nariz de cada perro es única, como una huella digital. Usa Peanut para registrarla y proteger a tu mejor amigo.",
+      "La nariz de cada perro es única, como una huella digital. Usa Trufa ID para registrarla y proteger a tu mejor amigo.",
   },
   {
     emoji: "🔍",
     icon: "magnify",
     title: "Encuentra perros perdidos",
     subtitle:
-      "Si encuentras un perro perdido, escanea su trufa y descubre al instante si está registrado en Peanut.",
+      "Si encuentras un perro perdido, escanea su trufa y descubre al instante si está registrado en Trufa ID.",
   },
   {
     emoji: "❤️",
@@ -69,7 +69,7 @@ export default function OnboardingScreen() {
       >
         <View style={styles.topRow}>
           <View style={styles.logoWrap}>
-            <Text style={styles.logoText}>Peanut</Text>
+            <Text style={styles.logoText}>Trufa ID</Text>
           </View>
           {!isLast && (
             <Pressable onPress={finish} hitSlop={10}>

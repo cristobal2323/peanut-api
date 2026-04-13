@@ -23,7 +23,7 @@ export default function NoMatchScreen() {
         </View>
         <Text style={styles.title}>No encontramos coincidencias</Text>
         <Text style={styles.subtitle}>
-          Este perro no parece estar registrado en Peanut
+          Este perro no parece estar registrado en Trufa ID
         </Text>
       </View>
 

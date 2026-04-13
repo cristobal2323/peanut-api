@@ -18,7 +18,7 @@ import {
   Inter_500Medium,
   Inter_600SemiBold,
 } from "@expo-google-fonts/inter";
-import { PeanutTheme, colors } from "../src/theme";
+import { TrufaTheme, colors } from "../src/theme";
 import { queryClient } from "../src/lib/queryClient";
 import { initSentry } from "../src/lib/sentry";
 
@@ -72,7 +72,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <PaperProvider theme={PeanutTheme}>
+          <PaperProvider theme={TrufaTheme}>
             <StatusBar style="dark" />
             <RootLayoutNav />
           </PaperProvider>

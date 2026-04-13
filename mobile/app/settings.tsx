@@ -166,7 +166,7 @@ export default function SettingsScreen() {
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </Pressable>
 
-        <Text style={styles.version}>Peanut v0.1.0</Text>
+        <Text style={styles.version}>Trufa ID v0.1.0</Text>
       </ScrollView>
     </View>
   );

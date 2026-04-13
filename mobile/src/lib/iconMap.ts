@@ -1,7 +1,7 @@
 /**
  * Lucide → MaterialCommunityIcons reference table.
  *
- * Peanutappdesign uses Lucide icons. The mobile app uses
+ * Trufa ID design uses Lucide icons. The mobile app uses
  * `@expo/vector-icons/MaterialCommunityIcons`. This file is a static
  * lookup so implementers can quickly find the MCI equivalent for
  * any Lucide icon name referenced in the design.

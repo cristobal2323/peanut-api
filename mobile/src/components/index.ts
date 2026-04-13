@@ -7,7 +7,7 @@ export { LanguageToggle } from "./LanguageToggle";
 export { PrimaryButton } from "./PrimaryButton";
 export { TextInputField } from "./TextInputField";
 
-// Peanut Design System (Peanutappdesign reference)
+// Trufa ID Design System (Peanutappdesign reference)
 export { ScreenHeader } from "./ScreenHeader";
 export { GradientHeader } from "./GradientHeader";
 export { DogCard } from "./DogCard";

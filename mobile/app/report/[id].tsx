@@ -51,7 +51,7 @@ export default function ReportDetailScreen() {
   const shareReport = async () => {
     try {
       await Share.share({
-        message: `🚨 ${report.dogName} está perdido. Por favor ayuda a difundir. — Vía Peanut`,
+        message: `🚨 ${report.dogName} está perdido. Por favor ayuda a difundir. — Vía Trufa ID`,
       });
     } catch {}
   };

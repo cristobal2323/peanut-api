@@ -13,10 +13,10 @@ const fontConfig = {
   fontFamily: fonts.body,
 } as const;
 
-// Peanut Design System — sourced from cristobal2323/Peanutappdesign (Figma Make export)
-// Primary accent: #F59E42 (peanut orange)
+// Trufa ID Design System — sourced from cristobal2323/Peanutappdesign (Figma Make export)
+// Primary accent: #F59E42
 export const colors = {
-  // ── Primary (Peanut Orange) ──
+  // ── Primary ──
   primary: "#F59E42",
   primaryContainer: "#FFF4E6",
   primaryFixed: "#FFE9D1",
@@ -90,7 +90,7 @@ export const colors = {
   accentAmberContainer: "rgba(245,158,11,0.10)",
 };
 
-export const PeanutTheme = {
+export const TrufaTheme = {
   ...MD3LightTheme,
   roundness: 14,
   fonts: configureFonts({ config: { fontFamily: fonts.body } }),

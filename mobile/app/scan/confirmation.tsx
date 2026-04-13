@@ -61,7 +61,7 @@ export default function ConfirmationScreen() {
 
           <SectionCard>
             <Row icon="map-marker-outline" color={colors.secondary} title="Comunidad alerta">
-              Si lo encuentran, podrán identificarlo en segundos con Peanut.
+              Si lo encuentran, podrán identificarlo en segundos con Trufa ID.
             </Row>
           </SectionCard>
         </View>

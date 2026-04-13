@@ -69,7 +69,7 @@ export default function LoginScreen() {
         >
           <View style={styles.heroLogo}>
             <Image
-              source={require("../../assets/logo-peanut.png")}
+              source={require("../../assets/logo-trufa.png")}
               style={styles.logo}
               resizeMode="contain"
             />

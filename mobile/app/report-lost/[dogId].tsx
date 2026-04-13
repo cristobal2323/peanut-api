@@ -98,7 +98,7 @@ export default function ReportLostScreen() {
   const shareReport = async () => {
     try {
       await Share.share({
-        message: `🚨 ${dogName} está perdido en ${address || "ubicación desconocida"}. Si lo ves, ayúdame a contactar. — Vía Peanut`,
+        message: `🚨 ${dogName} está perdido en ${address || "ubicación desconocida"}. Si lo ves, ayúdame a contactar. — Vía Trufa ID`,
       });
     } catch {}
   };
