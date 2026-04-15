@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Image,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { Link } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -32,7 +33,7 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const [selectedIdx, setSelectedIdx] = useState(0);
 
-  const { data: apiDogs } = useQuery({
+  const { data: apiDogs, isLoading: dogsLoading } = useQuery({
     queryKey: queryKeys.dogs,
     queryFn: dogsApi.listMine,
     enabled: !!user?.id,
@@ -91,7 +92,12 @@ export default function HomeScreen() {
       >
       {/* ── Body ── */}
       <View style={styles.body}>
-        {hasDogs ? (
+        {dogsLoading && !hasDogs ? (
+          <View style={styles.loadingCard}>
+            <ActivityIndicator color={colors.primary} size="large" />
+            <Text style={styles.loadingText}>Cargando tus perros...</Text>
+          </View>
+        ) : hasDogs ? (
           <>
             {/* Dog Card */}
             <View style={styles.dogCard}>
@@ -395,10 +401,27 @@ const styles = StyleSheet.create({
     borderRadius: 100,
   },
   statusSafe: {
-    backgroundColor: colors.tertiaryContainer,
+    backgroundColor: colors.tertiary,
   },
   statusLost: {
     backgroundColor: colors.errorContainer,
+  },
+  loadingCard: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    paddingVertical: 48,
+    alignItems: "center",
+    gap: spacing.md,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  loadingText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.textMuted,
   },
   statusText: {
     fontFamily: fonts.bodySemiBold,
