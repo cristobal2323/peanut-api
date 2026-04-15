@@ -6,6 +6,8 @@ export type LoginPayload = {
   password: string;
 };
 
+export type SignupRole = "OWNER" | "RESCUER" | "VET";
+
 export type SignupPayload = {
   name: string;
   email: string;
@@ -14,6 +16,7 @@ export type SignupPayload = {
   city?: string;
   photo?: string;
   phone?: string;
+  role?: SignupRole;
 };
 
 export type RefreshResponse = {

@@ -33,6 +33,10 @@ type Translations = Record<
         passwordPlaceholder: string;
         phoneLabel: string;
         phonePlaceholder: string;
+        roleLabel: string;
+        roleOwner: string;
+        roleRescuer: string;
+        roleVet: string;
         termsLabel: string;
         submit: string;
         divider: string;
@@ -103,6 +107,10 @@ const translations: Translations = {
         passwordPlaceholder: "••••••••••",
         phoneLabel: "Phone (include country code)",
         phonePlaceholder: "+569XXXXXXXX",
+        roleLabel: "I am signing up as",
+        roleOwner: "Owner",
+        roleRescuer: "Rescuer",
+        roleVet: "Vet",
         termsLabel: "Agree with Terms & Condition",
         submit: "Sign Up",
         divider: "Or sign up with",
@@ -171,6 +179,10 @@ const translations: Translations = {
         passwordPlaceholder: "••••••••••",
         phoneLabel: "Teléfono (incluye código de país)",
         phonePlaceholder: "+569XXXXXXXX",
+        roleLabel: "Me registro como",
+        roleOwner: "Dueño",
+        roleRescuer: "Rescatista",
+        roleVet: "Veterinario",
         termsLabel: "Acepto Términos y Condiciones",
         submit: "Registrarme",
         divider: "O regístrate con",

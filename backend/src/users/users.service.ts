@@ -60,14 +60,30 @@ export class UsersService {
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
-    const user = await this.prisma.user.create({
-      data: {
-        name: payload.name,
-        email: payload.email,
-        phone: payload.phone,
-        passwordHash,
-        role: UserRole.OWNER,
-      },
+    const role = (payload.role as UserRole | undefined) ?? UserRole.OWNER;
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          name: payload.name,
+          email: payload.email,
+          phone: payload.phone,
+          passwordHash,
+          role,
+        },
+      });
+
+      await tx.notificationSettings.create({
+        data: {
+          userId: created.id,
+          pushEnabled: true,
+          emailEnabled: true,
+          smsEnabled: false,
+          lostAlertsRadiusKm: 5,
+        },
+      });
+
+      return created;
     });
 
     return this.sanitizeUser(user);
