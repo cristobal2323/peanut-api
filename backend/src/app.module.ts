@@ -7,6 +7,8 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { MailModule } from './mail/mail.module';
 import { UsersModule } from './users/users.module';
 import { DogsModule } from './dogs/dogs.module';
+import { BreedsModule } from './breeds/breeds.module';
+import { ColorsModule } from './colors/colors.module';
 import { LostReportsModule } from './lost-reports/lost-reports.module';
 import { SightingsModule } from './sightings/sightings.module';
 import { ScanEventsModule } from './scan-events/scan-events.module';
@@ -28,6 +30,8 @@ const jwtExpiresIn: SignOptions['expiresIn'] =
     MailModule,
     UsersModule,
     DogsModule,
+    BreedsModule,
+    ColorsModule,
     LostReportsModule,
     SightingsModule,
     ScanEventsModule,

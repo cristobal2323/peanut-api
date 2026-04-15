@@ -12,6 +12,8 @@ export const queryKeys = {
   mapPins: ["mapPins"] as const,
   userStats: (id: string) => ["userStats", id] as const,
   appearanceSearch: (imageUri: string) => ["appearanceSearch", imageUri] as const,
+  breeds: (q?: string) => ["breeds", q ?? "all"] as const,
+  colors: (q?: string) => ["colors", q ?? "all"] as const,
 };
 
 export const queryClient = new QueryClient({

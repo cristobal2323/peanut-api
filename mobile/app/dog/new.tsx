@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -14,53 +14,86 @@ import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInRight, FadeOutLeft } from "react-native-reanimated";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
 import { StepProgress } from "../../src/components/StepProgress";
 import { FormField } from "../../src/components/FormField";
 import { InfoTip } from "../../src/components/InfoTip";
+import {
+  SearchableSelect,
+  SelectOption,
+} from "../../src/components/SearchableSelect";
 import { colors, fonts, spacing, radii } from "../../src/theme";
-import { api } from "../../src/api/mockApi";
-import { Dog } from "../../src/types";
+import { dogsApi, CreateDogPayload } from "../../src/api/dogs";
+import { breedsApi } from "../../src/api/breeds";
+import { colorsApi } from "../../src/api/colors";
+import { queryKeys } from "../../src/lib/queryClient";
+import { uploadDogPhoto } from "../../src/lib/supabase";
+import { useAuthStore } from "../../src/store/auth";
+import { useTranslation } from "../../src/i18n";
 
 type DogForm = {
   photo?: string;
   name: string;
-  breed: string;
+  breedId?: string;
+  breedLabel?: string;
+  mixedBreed: boolean;
   sex: "male" | "female";
   age: string;
-  color: string;
+  colorId?: string;
+  colorLabel?: string;
   size: "small" | "medium" | "large";
-  traits: string;
+  notes: string;
   hasMicrochip: boolean;
   microchip: string;
-  phonePrimary: string;
-  phoneAlt: string;
+  passportId: string;
 };
 
 const initialForm: DogForm = {
   name: "",
-  breed: "",
+  mixedBreed: false,
   sex: "male",
   age: "",
-  color: "",
   size: "medium",
-  traits: "",
+  notes: "",
   hasMicrochip: false,
   microchip: "",
-  phonePrimary: "",
-  phoneAlt: "",
+  passportId: "",
 };
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 2;
 
 export default function NewDogScreen() {
   const router = useRouter();
+  const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<DogForm>(initialForm);
   const [submitting, setSubmitting] = useState(false);
 
   const update = <K extends keyof DogForm>(key: K, value: DogForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const { data: breedsData, isLoading: breedsLoading } = useQuery({
+    queryKey: queryKeys.breeds(),
+    queryFn: () => breedsApi.list(),
+    staleTime: 1000 * 60 * 60,
+  });
+  const { data: colorsData, isLoading: colorsLoading } = useQuery({
+    queryKey: queryKeys.colors(),
+    queryFn: () => colorsApi.list(),
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const breedOptions: SelectOption[] = useMemo(
+    () => (breedsData ?? []).map((b) => ({ id: b.id, label: b.name })),
+    [breedsData]
+  );
+  const colorOptions: SelectOption[] = useMemo(
+    () => (colorsData ?? []).map((c) => ({ id: c.id, label: c.name })),
+    [colorsData]
+  );
 
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -73,42 +106,75 @@ export default function NewDogScreen() {
   };
 
   const canContinue = (() => {
-    if (step === 1) return form.name.trim() && form.breed.trim() && form.age.trim();
-    if (step === 2) return form.color.trim();
-    if (step === 3) return form.phonePrimary.trim();
+    if (step === 1) {
+      const breedOk = form.mixedBreed || !!form.breedId;
+      return !!form.name.trim() && !!form.age.trim() && breedOk;
+    }
+    if (step === 2) return !!form.size;
     return false;
   })();
+
+  const submit = async () => {
+    if (!user?.id) {
+      Alert.alert(t("dogs.form.saveErrorTitle"), t("dogs.form.sessionError"));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      let photoUrl: string | undefined;
+      if (form.photo) {
+        try {
+          photoUrl = await uploadDogPhoto(form.photo, user.id);
+        } catch (e: any) {
+          console.warn("Photo upload failed", e);
+          Alert.alert(
+            t("dogs.form.photoUploadErrorTitle"),
+            t("dogs.form.photoUploadErrorBody")
+          );
+        }
+      }
+
+      const payload: CreateDogPayload = {
+        name: form.name.trim(),
+        breedId: form.breedId,
+        mixedBreed: form.mixedBreed,
+        ageYears: form.age ? Number(form.age) : undefined,
+        sex: form.sex === "male" ? "MALE" : "FEMALE",
+        colorId: form.colorId,
+        size:
+          form.size === "small"
+            ? "SMALL"
+            : form.size === "large"
+              ? "LARGE"
+              : "MEDIUM",
+        microchip: form.hasMicrochip ? form.microchip.trim() || undefined : undefined,
+        passportId: form.passportId.trim() || undefined,
+        notes: form.notes.trim() || undefined,
+        photoUrl,
+      };
+
+      const saved = await dogsApi.create(payload);
+      qc.invalidateQueries({ queryKey: queryKeys.dogs });
+      router.replace({
+        pathname: "/scan/nose",
+        params: { dogId: saved.id, fromRegister: "1" },
+      });
+    } catch (e: any) {
+      Alert.alert(
+        t("dogs.form.saveErrorTitle"),
+        e?.message ?? t("dogs.form.saveErrorDefault")
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const goNext = async () => {
     if (step < TOTAL_STEPS) {
       setStep((s) => s + 1);
       return;
     }
-    // Final submit
-    setSubmitting(true);
-    try {
-      const payload: Dog = {
-        id: "",
-        name: form.name,
-        breed: form.breed,
-        age: form.age ? Number(form.age) : undefined,
-        sex: form.sex,
-        color: form.color,
-        size: form.size,
-        microchip: form.hasMicrochip ? form.microchip : undefined,
-        photo: form.photo,
-        status: "normal",
-      };
-      const saved = await api.saveDog(payload);
-      router.replace({
-        pathname: "/scan/nose",
-        params: { dogId: saved.id, fromRegister: "1" },
-      });
-    } catch (e: any) {
-      Alert.alert("Error", e?.message ?? "No pudimos guardar el perro");
-    } finally {
-      setSubmitting(false);
-    }
+    await submit();
   };
 
   const goBack = () => {
@@ -121,12 +187,14 @@ export default function NewDogScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <ScreenHeader title="Registrar Perro" onBack={goBack} />
+      <ScreenHeader title={t("dogs.form.title")} onBack={goBack} />
 
       <View style={styles.progressWrap}>
         <StepProgress current={step} total={TOTAL_STEPS} />
         <Text style={styles.stepLabel}>
-          Paso {step} de {TOTAL_STEPS}
+          {t("dogs.form.stepLabel")
+            .replace("{current}", String(step))
+            .replace("{total}", String(TOTAL_STEPS))}
         </Text>
       </View>
 
@@ -136,55 +204,104 @@ export default function NewDogScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {step === 1 && (
-          <Animated.View entering={FadeInRight.duration(300)} exiting={FadeOutLeft.duration(150)} style={styles.stepWrap}>
-            <Text style={styles.stepTitle}>Información básica</Text>
-            <Text style={styles.stepSub}>Cuéntanos lo esencial sobre tu mejor amigo</Text>
+          <Animated.View
+            entering={FadeInRight.duration(300)}
+            exiting={FadeOutLeft.duration(150)}
+            style={styles.stepWrap}
+          >
+            <Text style={styles.stepTitle}>{t("dogs.form.step1Title")}</Text>
+            <Text style={styles.stepSub}>{t("dogs.form.step1Sub")}</Text>
 
             <Pressable style={styles.photoUpload} onPress={pickPhoto}>
               {form.photo ? (
                 <Image source={{ uri: form.photo }} style={styles.photoImage} />
               ) : (
                 <View style={styles.photoPlaceholder}>
-                  <MaterialCommunityIcons name="camera-plus" size={36} color={colors.primary} />
-                  <Text style={styles.photoLabel}>Subir foto</Text>
+                  <MaterialCommunityIcons
+                    name="camera-plus"
+                    size={36}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.photoLabel}>
+                    {t("dogs.form.photoLabel")}
+                  </Text>
                 </View>
               )}
             </Pressable>
 
             <FormField
-              label="Nombre"
+              label={t("dogs.form.nameLabel")}
               required
-              placeholder="Ej. Peanut"
+              placeholder={t("dogs.form.namePlaceholder")}
               value={form.name}
               onChangeText={(v) => update("name", v)}
             />
 
-            <FormField
-              label="Raza o mestizo"
-              required
-              placeholder="Ej. Beagle Mix"
-              value={form.breed}
-              onChangeText={(v) => update("breed", v)}
+            <SearchableSelect
+              label={t("dogs.form.breedLabel")}
+              required={!form.mixedBreed}
+              placeholder={t("dogs.form.breedPlaceholder")}
+              searchPlaceholder={t("dogs.form.breedSearchPlaceholder")}
+              emptyLabel={t("dogs.form.emptySearch")}
+              value={form.breedId}
+              valueLabel={form.breedLabel}
+              options={breedOptions}
+              loading={breedsLoading}
+              onChange={(id, opt) => {
+                update("breedId", id);
+                update("breedLabel", opt.label);
+              }}
             />
+
+            <Pressable
+              style={styles.checkboxRow}
+              onPress={() => update("mixedBreed", !form.mixedBreed)}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  form.mixedBreed && styles.checkboxChecked,
+                ]}
+              >
+                {form.mixedBreed && (
+                  <MaterialCommunityIcons
+                    name="check"
+                    size={14}
+                    color="#ffffff"
+                  />
+                )}
+              </View>
+              <Text style={styles.checkboxLabel}>
+                {t("dogs.form.mixedBreedLabel")}
+              </Text>
+            </Pressable>
 
             <View style={styles.fieldLabelWrap}>
               <Text style={styles.fieldLabel}>
-                Sexo <Text style={styles.required}>*</Text>
+                {t("dogs.form.sexLabel")} <Text style={styles.required}>*</Text>
               </Text>
               <PillGroup
                 value={form.sex}
                 options={[
-                  { label: "Macho", value: "male", icon: "gender-male" },
-                  { label: "Hembra", value: "female", icon: "gender-female" },
+                  {
+                    label: t("dogs.form.sexMale"),
+                    value: "male",
+                    icon: "gender-male",
+                  },
+                  {
+                    label: t("dogs.form.sexFemale"),
+                    value: "female",
+                    icon: "gender-female",
+                  },
                 ]}
                 onChange={(v) => update("sex", v as "male" | "female")}
               />
             </View>
 
             <FormField
-              label="Edad (años)"
+              label={t("dogs.form.ageLabel")}
               required
-              placeholder="Ej. 4"
+              placeholder={t("dogs.form.agePlaceholder")}
               keyboardType="numeric"
               value={form.age}
               onChangeText={(v) => update("age", v)}
@@ -193,40 +310,59 @@ export default function NewDogScreen() {
         )}
 
         {step === 2 && (
-          <Animated.View entering={FadeInRight.duration(300)} exiting={FadeOutLeft.duration(150)} style={styles.stepWrap}>
-            <Text style={styles.stepTitle}>Rasgos y detalles</Text>
-            <Text style={styles.stepSub}>Más información que ayuda a identificarlo</Text>
+          <Animated.View
+            entering={FadeInRight.duration(300)}
+            exiting={FadeOutLeft.duration(150)}
+            style={styles.stepWrap}
+          >
+            <Text style={styles.stepTitle}>{t("dogs.form.step2Title")}</Text>
+            <Text style={styles.stepSub}>{t("dogs.form.step2Sub")}</Text>
 
-            <FormField
-              label="Color"
-              required
-              placeholder="Ej. Marrón / Blanco"
-              value={form.color}
-              onChangeText={(v) => update("color", v)}
+            <SearchableSelect
+              label={t("dogs.form.colorLabel")}
+              placeholder={t("dogs.form.colorPlaceholder")}
+              searchPlaceholder={t("dogs.form.colorSearchPlaceholder")}
+              emptyLabel={t("dogs.form.emptySearch")}
+              value={form.colorId}
+              valueLabel={form.colorLabel}
+              options={colorOptions}
+              loading={colorsLoading}
+              onChange={(id, opt) => {
+                update("colorId", id);
+                update("colorLabel", opt.label);
+              }}
             />
 
             <View style={styles.fieldLabelWrap}>
               <Text style={styles.fieldLabel}>
-                Tamaño <Text style={styles.required}>*</Text>
+                {t("dogs.form.sizeLabel")} <Text style={styles.required}>*</Text>
               </Text>
               <PillGroup
                 value={form.size}
                 options={[
-                  { label: "Pequeño", value: "small" },
-                  { label: "Mediano", value: "medium" },
-                  { label: "Grande", value: "large" },
+                  { label: t("dogs.form.sizeSmall"), value: "small" },
+                  { label: t("dogs.form.sizeMedium"), value: "medium" },
+                  { label: t("dogs.form.sizeLarge"), value: "large" },
                 ]}
                 onChange={(v) => update("size", v as DogForm["size"])}
               />
             </View>
 
             <FormField
-              label="Rasgos distintivos"
-              placeholder="Cicatrices, manchas únicas, comportamiento..."
+              label={t("dogs.form.notesLabel")}
+              placeholder={t("dogs.form.notesPlaceholder")}
               multiline
               numberOfLines={4}
-              value={form.traits}
-              onChangeText={(v) => update("traits", v)}
+              value={form.notes}
+              onChangeText={(v) => update("notes", v)}
+            />
+
+            <FormField
+              label={t("dogs.form.passportLabel")}
+              icon="passport"
+              placeholder={t("dogs.form.passportPlaceholder")}
+              value={form.passportId}
+              onChangeText={(v) => update("passportId", v)}
             />
 
             <InfoTip tone="orange" emoji="🔖">
@@ -234,61 +370,39 @@ export default function NewDogScreen() {
                 style={styles.checkboxRow}
                 onPress={() => update("hasMicrochip", !form.hasMicrochip)}
               >
-                <View style={[styles.checkbox, form.hasMicrochip && styles.checkboxChecked]}>
+                <View
+                  style={[
+                    styles.checkbox,
+                    form.hasMicrochip && styles.checkboxChecked,
+                  ]}
+                >
                   {form.hasMicrochip && (
-                    <MaterialCommunityIcons name="check" size={14} color="#ffffff" />
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={14}
+                      color="#ffffff"
+                    />
                   )}
                 </View>
-                <Text style={styles.checkboxLabel}>Tiene microchip</Text>
+                <Text style={styles.checkboxLabel}>
+                  {t("dogs.form.microchipLabel")}
+                </Text>
               </Pressable>
               {form.hasMicrochip && (
                 <FormField
-                  placeholder="Número de microchip"
+                  placeholder={t("dogs.form.microchipPlaceholder")}
                   value={form.microchip}
                   onChangeText={(v) => update("microchip", v)}
                   containerStyle={{ marginTop: spacing.sm }}
                 />
               )}
             </InfoTip>
-          </Animated.View>
-        )}
-
-        {step === 3 && (
-          <Animated.View entering={FadeInRight.duration(300)} exiting={FadeOutLeft.duration(150)} style={styles.stepWrap}>
-            <Text style={styles.stepTitle}>Información de contacto</Text>
-            <Text style={styles.stepSub}>Para que puedan contactarte si encuentran a tu perro</Text>
-
-            <FormField
-              label="Teléfono principal"
-              required
-              icon="phone"
-              placeholder="+56 9 1234 5678"
-              keyboardType="phone-pad"
-              value={form.phonePrimary}
-              onChangeText={(v) => update("phonePrimary", v)}
-            />
-
-            <FormField
-              label="Teléfono alternativo"
-              icon="phone-plus"
-              placeholder="Opcional"
-              keyboardType="phone-pad"
-              value={form.phoneAlt}
-              onChangeText={(v) => update("phoneAlt", v)}
-            />
 
             <InfoTip
               tone="blue"
-              emoji="🔒"
-              title="Tus datos están protegidos"
-              body="Solo se mostrarán cuando alguien encuentre a tu perro y necesite contactarte."
-            />
-
-            <InfoTip
-              tone="orange"
               emoji="📷"
-              title="Próximo paso: escanear la trufa"
-              body="Te llevaremos a la cámara para capturar el patrón único de la nariz de tu perro."
+              title={t("dogs.form.infoNextTitle")}
+              body={t("dogs.form.infoNextBody")}
             />
           </Animated.View>
         )}
@@ -297,7 +411,7 @@ export default function NewDogScreen() {
       <View style={styles.footer}>
         {step > 1 && (
           <Pressable style={styles.btnGhost} onPress={goBack}>
-            <Text style={styles.btnGhostText}>Atrás</Text>
+            <Text style={styles.btnGhostText}>{t("dogs.form.back")}</Text>
           </Pressable>
         )}
         <Pressable
@@ -309,7 +423,11 @@ export default function NewDogScreen() {
           disabled={!canContinue || submitting}
         >
           <Text style={styles.btnPrimaryText}>
-            {step < TOTAL_STEPS ? "Continuar" : "Escanear trufa"}
+            {step < TOTAL_STEPS
+              ? t("dogs.form.continue")
+              : submitting
+                ? t("dogs.form.submitting")
+                : t("dogs.form.submit")}
           </Text>
           <MaterialCommunityIcons
             name={step < TOTAL_STEPS ? "arrow-right" : "line-scan"}
@@ -323,7 +441,11 @@ export default function NewDogScreen() {
 }
 
 // ─── PillGroup helper ───────────────────────────────────────
-type PillOption = { label: string; value: string; icon?: keyof typeof MaterialCommunityIcons.glyphMap };
+type PillOption = {
+  label: string;
+  value: string;
+  icon?: keyof typeof MaterialCommunityIcons.glyphMap;
+};
 type PillGroupProps = {
   value: string;
   options: PillOption[];

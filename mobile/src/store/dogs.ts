@@ -9,38 +9,7 @@ type DogsState = {
   toggleStatus: (id: string, status: Dog["status"]) => void;
 };
 
-const initialDogs: Dog[] = [
-  {
-    id: "d1",
-    name: "Peanut",
-    breed: "Beagle Mix",
-    age: 4,
-    sex: "male",
-    color: "Brown / White",
-    size: "medium",
-    status: "normal",
-    photo:
-      "https://images.unsplash.com/photo-1583512603871-8c539cddf0c3?auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    id: "d2",
-    name: "Luna",
-    breed: "Border Collie",
-    age: 2,
-    sex: "female",
-    color: "Black / White",
-    size: "medium",
-    status: "lost",
-    photo:
-      "https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=800&q=80",
-    lastSeen: {
-      latitude: 37.78825,
-      longitude: -122.4324,
-      address: "Mission District",
-      time: "2024-07-18T14:00:00Z"
-    }
-  }
-];
+const initialDogs: Dog[] = [];
 
 export const useDogsStore = create<DogsState>((set) => ({
   dogs: initialDogs,

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ScrollView,
   View,
@@ -16,7 +16,10 @@ import { spacing, colors, fonts } from "../../src/theme";
 import { useAuthStore } from "../../src/store/auth";
 import { useDogsStore } from "../../src/store/dogs";
 import { api } from "../../src/api/mockApi";
+import { dogsApi, mapApiDogToDog } from "../../src/api/dogs";
 import { queryKeys } from "../../src/lib/queryClient";
+import { usePreferencesStore } from "../../src/store/preferences";
+import { useTranslation } from "../../src/i18n";
 
 // Local alias kept for readability in styles below.
 // Mirrors the global theme primary so any palette change propagates.
@@ -25,8 +28,25 @@ const ACCENT = colors.primary;
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
-  const dogs = useDogsStore((s) => s.dogs);
+  const locale = usePreferencesStore((s) => s.locale);
+  const { t } = useTranslation();
   const [selectedIdx, setSelectedIdx] = useState(0);
+
+  const { data: apiDogs } = useQuery({
+    queryKey: queryKeys.dogs,
+    queryFn: dogsApi.listMine,
+    enabled: !!user?.id,
+  });
+
+  const dogs = useMemo(
+    () => (apiDogs ?? []).map((d) => mapApiDogToDog(d, locale)),
+    [apiDogs, locale]
+  );
+
+  useEffect(() => {
+    useDogsStore.getState().setDogs(dogs);
+  }, [dogs]);
+
   const heroDog = dogs[selectedIdx] ?? dogs[0];
   const hasDogs = dogs.length > 0;
 
@@ -225,14 +245,16 @@ export default function HomeScreen() {
               <MaterialCommunityIcons name="plus" size={32} color="#fff" />
             </View>
             <Text style={styles.registerTitle}>
-              Registra a tu primer perro
+              {t("dogs.home.emptyTitle")}
             </Text>
             <Text style={styles.registerSub}>
-              Protegelo con su huella digital unica: la trufa
+              {t("dogs.home.emptySubtitle")}
             </Text>
             <Link href="/dog/new" asChild>
               <Pressable style={styles.registerBtn}>
-                <Text style={styles.registerBtnText}>Comenzar registro</Text>
+                <Text style={styles.registerBtnText}>
+                  {t("dogs.home.emptyCta")}
+                </Text>
               </Pressable>
             </Link>
           </LinearGradient>

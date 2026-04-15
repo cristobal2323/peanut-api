@@ -128,24 +128,49 @@ model Owner {
   user User @relation(fields: [userId], references: [id])
 }
 
+model Breed {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  nameEs    String
+  nameEn    String
+  createdAt DateTime @default(now())
+
+  dogs Dog[]
+}
+
+model Color {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  nameEs    String
+  nameEn    String
+  hex       String?
+  createdAt DateTime @default(now())
+
+  dogs Dog[]
+}
+
 model Dog {
   id          String   @id @default(uuid())
   ownerId     String
   name        String
-  breed       String?
+  breedId     String?
   mixedBreed  Boolean  @default(false)
   ageYears    Int?
   sex         DogSex
-  color       String?
+  colorId     String?
   size        DogSize
   microchip   String?
   passportId  String?
+  photoUrl    String?
+  notes       String?
   lostStatus  Boolean  @default(false)
   lostSince   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   owner              User                @relation(fields: [ownerId], references: [id])
+  breed              Breed?              @relation(fields: [breedId], references: [id])
+  color              Color?              @relation(fields: [colorId], references: [id])
   noseEmbedding      NoseEmbedding?
   appearanceEmbedding AppearanceEmbedding?
   lostReports        LostReport[]

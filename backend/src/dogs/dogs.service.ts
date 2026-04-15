@@ -7,24 +7,44 @@ import { t } from '../i18n/messages';
 export class DogsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(payload: CreateDogDto, lang?: string) {
-    const owner = await this.prisma.user.findUnique({ where: { id: payload.ownerId } });
+  async create(ownerId: string, payload: CreateDogDto, lang?: string) {
+    const owner = await this.prisma.user.findUnique({ where: { id: ownerId } });
     if (!owner) {
       throw new HttpException(t(lang, 'OWNER_NOT_FOUND'), HttpStatus.BAD_REQUEST);
     }
 
+    if (payload.breedId) {
+      const breed = await this.prisma.breed.findUnique({ where: { id: payload.breedId } });
+      if (!breed) {
+        throw new HttpException(t(lang, 'BREED_NOT_FOUND'), HttpStatus.BAD_REQUEST);
+      }
+    }
+
+    if (payload.colorId) {
+      const color = await this.prisma.color.findUnique({ where: { id: payload.colorId } });
+      if (!color) {
+        throw new HttpException(t(lang, 'COLOR_NOT_FOUND'), HttpStatus.BAD_REQUEST);
+      }
+    }
+
     return this.prisma.dog.create({
       data: {
-        ownerId: payload.ownerId,
+        ownerId,
         name: payload.name,
-        breed: payload.breed,
+        breedId: payload.breedId,
         mixedBreed: payload.mixedBreed ?? false,
         ageYears: payload.ageYears,
         sex: payload.sex,
-        color: payload.color,
+        colorId: payload.colorId,
         size: payload.size,
         microchip: payload.microchip,
         passportId: payload.passportId,
+        photoUrl: payload.photoUrl,
+        notes: payload.notes,
+      },
+      include: {
+        breed: true,
+        color: true,
       },
     });
   }
@@ -33,6 +53,8 @@ export class DogsService {
     const dog = await this.prisma.dog.findUnique({
       where: { id },
       include: {
+        breed: true,
+        color: true,
         owner: {
           select: {
             id: true,
@@ -52,6 +74,13 @@ export class DogsService {
   }
 
   async listByOwner(ownerId: string) {
-    return this.prisma.dog.findMany({ where: { ownerId } });
+    return this.prisma.dog.findMany({
+      where: { ownerId },
+      include: {
+        breed: true,
+        color: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }

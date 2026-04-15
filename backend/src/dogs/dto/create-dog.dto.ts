@@ -1,16 +1,22 @@
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUrl,
+  IsUUID,
+  Min,
+} from 'class-validator';
 import { DogSex, DogSize } from '@prisma/client';
 
 export class CreateDogDto {
-  @IsUUID()
-  ownerId: string;
-
   @IsString()
   name: string;
 
   @IsOptional()
-  @IsString()
-  breed?: string;
+  @IsUUID()
+  breedId?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -25,8 +31,8 @@ export class CreateDogDto {
   sex: DogSex;
 
   @IsOptional()
-  @IsString()
-  color?: string;
+  @IsUUID()
+  colorId?: string;
 
   @IsEnum(DogSize)
   size: DogSize;
@@ -38,4 +44,12 @@ export class CreateDogDto {
   @IsOptional()
   @IsString()
   passportId?: string;
+
+  @IsOptional()
+  @IsUrl()
+  photoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

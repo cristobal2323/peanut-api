@@ -12,7 +12,9 @@ const messages: Record<Lang, Record<MessageKey, string>> = {
     OWNER_NOT_FOUND: "Owner not found",
     DOG_NOT_FOUND: "Dog not found",
     OWNER_MISMATCH_FOR_DOG: "Owner mismatch for dog",
-    LOST_REPORT_NOT_FOUND: "Lost report not found"
+    LOST_REPORT_NOT_FOUND: "Lost report not found",
+    BREED_NOT_FOUND: "Breed not found",
+    COLOR_NOT_FOUND: "Color not found"
   },
   es: {
     EMAIL_REGISTERED: "Correo ya registrado",
@@ -22,7 +24,9 @@ const messages: Record<Lang, Record<MessageKey, string>> = {
     OWNER_NOT_FOUND: "Dueño no encontrado",
     DOG_NOT_FOUND: "Perro no encontrado",
     OWNER_MISMATCH_FOR_DOG: "El dueño no coincide con el perro",
-    LOST_REPORT_NOT_FOUND: "Reporte de pérdida no encontrado"
+    LOST_REPORT_NOT_FOUND: "Reporte de pérdida no encontrado",
+    BREED_NOT_FOUND: "Raza no encontrada",
+    COLOR_NOT_FOUND: "Color no encontrado"
   }
 };
 
@@ -34,7 +38,9 @@ export type MessageKey =
   | "OWNER_NOT_FOUND"
   | "DOG_NOT_FOUND"
   | "OWNER_MISMATCH_FOR_DOG"
-  | "LOST_REPORT_NOT_FOUND";
+  | "LOST_REPORT_NOT_FOUND"
+  | "BREED_NOT_FOUND"
+  | "COLOR_NOT_FOUND";
 
 export const t = (lang: string | undefined, key: MessageKey): string => {
   const locale = normalizeLang(lang);
