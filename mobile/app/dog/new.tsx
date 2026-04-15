@@ -23,6 +23,7 @@ import {
   SearchableSelect,
   SelectOption,
 } from "../../src/components/SearchableSelect";
+import { DatePickerField } from "../../src/components/DatePickerField";
 import { colors, fonts, spacing, radii } from "../../src/theme";
 import { dogsApi, CreateDogPayload } from "../../src/api/dogs";
 import { breedsApi } from "../../src/api/breeds";
@@ -39,7 +40,7 @@ type DogForm = {
   breedLabel?: string;
   mixedBreed: boolean;
   sex: "male" | "female";
-  age: string;
+  birthDate?: Date;
   colorId?: string;
   colorLabel?: string;
   size: "small" | "medium" | "large";
@@ -53,7 +54,6 @@ const initialForm: DogForm = {
   name: "",
   mixedBreed: false,
   sex: "male",
-  age: "",
   size: "medium",
   notes: "",
   hasMicrochip: false,
@@ -108,7 +108,7 @@ export default function NewDogScreen() {
   const canContinue = (() => {
     if (step === 1) {
       const breedOk = form.mixedBreed || !!form.breedId;
-      return !!form.name.trim() && !!form.age.trim() && breedOk;
+      return !!form.name.trim() && !!form.birthDate && breedOk;
     }
     if (step === 2) return !!form.size;
     return false;
@@ -138,7 +138,9 @@ export default function NewDogScreen() {
         name: form.name.trim(),
         breedId: form.breedId,
         mixedBreed: form.mixedBreed,
-        ageYears: form.age ? Number(form.age) : undefined,
+        birthDate: form.birthDate
+          ? form.birthDate.toISOString().slice(0, 10)
+          : undefined,
         sex: form.sex === "male" ? "MALE" : "FEMALE",
         colorId: form.colorId,
         size:
@@ -298,13 +300,15 @@ export default function NewDogScreen() {
               />
             </View>
 
-            <FormField
-              label={t("dogs.form.ageLabel")}
+            <DatePickerField
+              label={t("dogs.form.birthDateLabel")}
               required
-              placeholder={t("dogs.form.agePlaceholder")}
-              keyboardType="numeric"
-              value={form.age}
-              onChangeText={(v) => update("age", v)}
+              placeholder={t("dogs.form.birthDatePlaceholder")}
+              value={form.birthDate}
+              onChange={(d) => update("birthDate", d)}
+              cancelLabel={t("dogs.form.birthDateCancel")}
+              confirmLabel={t("dogs.form.birthDateConfirm")}
+              maximumDate={new Date()}
             />
           </Animated.View>
         )}

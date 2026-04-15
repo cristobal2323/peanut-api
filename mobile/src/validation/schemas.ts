@@ -12,7 +12,7 @@ export const signupSchema = z.object({
 export const dogSchema = z.object({
   name: z.string().min(1, "Requerido"),
   breed: z.string().min(2, "Requerido"),
-  age: z.number().int().nonnegative().optional(),
+  birthDate: z.string().optional(),
   sex: z.enum(["male", "female"]),
   color: z.string().min(2, "Requerido"),
   size: z.enum(["small", "medium", "large"]),

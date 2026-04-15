@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -6,20 +6,21 @@ import {
   Image,
   Pressable,
   Dimensions,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter, Link } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
 import { StatusBadge } from "../../src/components/StatusBadge";
 import { SectionCard } from "../../src/components/SectionCard";
 import { IconCircle } from "../../src/components/IconCircle";
 import { spacing, colors, fonts, radii } from "../../src/theme";
-import { api } from "../../src/api/mockApi";
+import { dogsApi, mapApiDogToDog } from "../../src/api/dogs";
 import { queryKeys } from "../../src/lib/queryClient";
+import { usePreferencesStore } from "../../src/store/preferences";
 
 const HERO_HEIGHT = 320;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -27,11 +28,43 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function DogDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const qc = useQueryClient();
+  const locale = usePreferencesStore((s) => s.locale);
+  const [deleting, setDeleting] = useState(false);
 
-  const { data: dog, isLoading } = useQuery({
+  const { data: apiDog, isLoading } = useQuery({
     queryKey: queryKeys.dog(id),
-    queryFn: () => api.fetchDog(id),
+    queryFn: () => dogsApi.getById(id),
   });
+
+  const dog = apiDog ? mapApiDogToDog(apiDog, locale) : undefined;
+
+  const confirmDelete = () => {
+    Alert.alert(
+      "Eliminar perro",
+      `¿Seguro que quieres eliminar a ${dog?.name ?? "este perro"}? Esta acción no se puede deshacer.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await dogsApi.remove(id);
+              qc.invalidateQueries({ queryKey: queryKeys.dogs });
+              qc.removeQueries({ queryKey: queryKeys.dog(id) });
+              router.back();
+            } catch (e: any) {
+              Alert.alert("Error", e?.message ?? "No pudimos eliminar el perro");
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (isLoading || !dog) {
     return (
@@ -136,17 +169,45 @@ export default function DogDetailScreen() {
               <TimelineItem date="2026-02-15" text="Cuenta creada" last />
             </View>
           </SectionCard>
+
+          <Pressable
+            style={[styles.deleteRow, deleting && styles.deleteRowDisabled]}
+            onPress={confirmDelete}
+            disabled={deleting}
+          >
+            <MaterialCommunityIcons
+              name="trash-can-outline"
+              size={18}
+              color={colors.error}
+            />
+            <Text style={styles.deleteRowText}>
+              {deleting ? "Eliminando..." : "Eliminar este perro"}
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
 
       <ScreenHeader
         variant="overlay"
         right={
-          <Link href={{ pathname: "/dog/edit/[id]", params: { id: dog.id } }} asChild>
-            <Pressable style={styles.editButton}>
-              <MaterialCommunityIcons name="pencil" size={20} color="#ffffff" />
+          <View style={styles.headerActions}>
+            <Link href={{ pathname: "/dog/edit/[id]", params: { id: dog.id } }} asChild>
+              <Pressable style={styles.editButton}>
+                <MaterialCommunityIcons name="pencil" size={20} color="#ffffff" />
+              </Pressable>
+            </Link>
+            <Pressable
+              style={styles.deleteHeaderButton}
+              onPress={confirmDelete}
+              disabled={deleting}
+            >
+              <MaterialCommunityIcons
+                name="trash-can-outline"
+                size={20}
+                color="#ffffff"
+              />
             </Pressable>
-          </Link>
+          </View>
         }
       />
     </View>
@@ -241,6 +302,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  headerActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
   editButton: {
     width: 40,
     height: 40,
@@ -248,6 +313,33 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  deleteHeaderButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(239,68,68,0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  deleteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingVertical: 14,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.error,
+    marginTop: spacing.sm,
+  },
+  deleteRowDisabled: {
+    opacity: 0.5,
+  },
+  deleteRowText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.error,
   },
 
   // Overlap card

@@ -1,7 +1,18 @@
-import { Body, Controller, Get, Headers, Param, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { DogsService } from './dogs.service';
 import { CreateDogDto } from './dto/create-dog.dto';
+import { UpdateDogDto } from './dto/update-dog.dto';
 
 type AuthedRequest = Request & { user: { sub: string; email?: string; role?: string } };
 
@@ -26,6 +37,25 @@ export class DogsController {
   @Get(':id')
   getById(@Param('id') id: string, @Headers('accept-language') lang?: string) {
     return this.dogsService.getById(id, lang);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() body: UpdateDogDto,
+    @Req() req: AuthedRequest,
+    @Headers('accept-language') lang?: string,
+  ) {
+    return this.dogsService.update(id, req.user.sub, body, lang);
+  }
+
+  @Delete(':id')
+  remove(
+    @Param('id') id: string,
+    @Req() req: AuthedRequest,
+    @Headers('accept-language') lang?: string,
+  ) {
+    return this.dogsService.remove(id, req.user.sub, lang);
   }
 }
 

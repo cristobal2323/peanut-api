@@ -155,7 +155,7 @@ model Dog {
   name        String
   breedId     String?
   mixedBreed  Boolean  @default(false)
-  ageYears    Int?
+  birthDate   DateTime? @db.Date
   sex         DogSex
   colorId     String?
   size        DogSize

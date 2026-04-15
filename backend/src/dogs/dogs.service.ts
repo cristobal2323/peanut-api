@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDogDto } from './dto/create-dog.dto';
+import { UpdateDogDto } from './dto/update-dog.dto';
 import { t } from '../i18n/messages';
 
 @Injectable()
@@ -33,7 +34,7 @@ export class DogsService {
         name: payload.name,
         breedId: payload.breedId,
         mixedBreed: payload.mixedBreed ?? false,
-        ageYears: payload.ageYears,
+        birthDate: payload.birthDate ? new Date(payload.birthDate) : undefined,
         sex: payload.sex,
         colorId: payload.colorId,
         size: payload.size,
@@ -82,5 +83,77 @@ export class DogsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async update(id: string, ownerId: string, payload: UpdateDogDto, lang?: string) {
+    const dog = await this.prisma.dog.findUnique({ where: { id } });
+    if (!dog) {
+      throw new HttpException(t(lang, 'DOG_NOT_FOUND'), HttpStatus.NOT_FOUND);
+    }
+    if (dog.ownerId !== ownerId) {
+      throw new HttpException(t(lang, 'OWNER_MISMATCH_FOR_DOG'), HttpStatus.FORBIDDEN);
+    }
+
+    if (payload.breedId) {
+      const breed = await this.prisma.breed.findUnique({ where: { id: payload.breedId } });
+      if (!breed) {
+        throw new HttpException(t(lang, 'BREED_NOT_FOUND'), HttpStatus.BAD_REQUEST);
+      }
+    }
+
+    if (payload.colorId) {
+      const color = await this.prisma.color.findUnique({ where: { id: payload.colorId } });
+      if (!color) {
+        throw new HttpException(t(lang, 'COLOR_NOT_FOUND'), HttpStatus.BAD_REQUEST);
+      }
+    }
+
+    return this.prisma.dog.update({
+      where: { id },
+      data: {
+        name: payload.name,
+        breedId: payload.breedId,
+        mixedBreed: payload.mixedBreed,
+        birthDate:
+          payload.birthDate === undefined
+            ? undefined
+            : payload.birthDate === null
+              ? null
+              : new Date(payload.birthDate),
+        sex: payload.sex,
+        colorId: payload.colorId,
+        size: payload.size,
+        microchip: payload.microchip,
+        passportId: payload.passportId,
+        photoUrl: payload.photoUrl,
+        notes: payload.notes,
+      },
+      include: {
+        breed: true,
+        color: true,
+      },
+    });
+  }
+
+  async remove(id: string, ownerId: string, lang?: string) {
+    const dog = await this.prisma.dog.findUnique({ where: { id } });
+    if (!dog) {
+      throw new HttpException(t(lang, 'DOG_NOT_FOUND'), HttpStatus.NOT_FOUND);
+    }
+    if (dog.ownerId !== ownerId) {
+      throw new HttpException(t(lang, 'OWNER_MISMATCH_FOR_DOG'), HttpStatus.FORBIDDEN);
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.noseEmbedding.deleteMany({ where: { dogId: id } }),
+      this.prisma.appearanceEmbedding.deleteMany({ where: { dogId: id } }),
+      this.prisma.identificationResult.deleteMany({ where: { candidateDogId: id } }),
+      this.prisma.scanEvent.deleteMany({ where: { dogId: id } }),
+      this.prisma.sighting.deleteMany({ where: { dogId: id } }),
+      this.prisma.lostReport.deleteMany({ where: { dogId: id } }),
+      this.prisma.dog.delete({ where: { id } }),
+    ]);
+
+    return { success: true };
   }
 }

@@ -68,6 +68,7 @@ export default ({ config }: ConfigContext): ExpoConfig =>
       ],
       "./plugins/withCleartextTraffic",
       "./plugins/withPodfileProperties",
+      "@react-native-community/datetimepicker",
     ],
 
     extra: {

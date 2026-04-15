@@ -9,9 +9,10 @@ import {
 } from 'class-validator';
 import { DogSex, DogSize } from '@prisma/client';
 
-export class CreateDogDto {
+export class UpdateDogDto {
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
   @IsOptional()
   @IsUUID()
@@ -25,15 +26,17 @@ export class CreateDogDto {
   @IsISO8601({ strict: true })
   birthDate?: string;
 
+  @IsOptional()
   @IsEnum(DogSex)
-  sex: DogSex;
+  sex?: DogSex;
 
   @IsOptional()
   @IsUUID()
   colorId?: string;
 
+  @IsOptional()
   @IsEnum(DogSize)
-  size: DogSize;
+  size?: DogSize;
 
   @IsOptional()
   @IsString()

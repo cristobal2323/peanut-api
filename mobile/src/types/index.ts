@@ -17,6 +17,7 @@ export interface Dog {
   name: string;
   breed: string;
   age?: number;
+  birthDate?: string;
   sex?: "male" | "female";
   color?: string;
   size?: DogSize;

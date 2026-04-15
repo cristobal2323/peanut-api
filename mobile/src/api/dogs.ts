@@ -8,7 +8,7 @@ export type CreateDogPayload = {
   name: string;
   breedId?: string;
   mixedBreed?: boolean;
-  ageYears?: number;
+  birthDate?: string;
   sex: DogSexApi;
   colorId?: string;
   size: DogSizeApi;
@@ -28,7 +28,7 @@ export type DogApi = {
   breedId?: string | null;
   breed?: BreedRef | null;
   mixedBreed: boolean;
-  ageYears?: number | null;
+  birthDate?: string | null;
   sex: DogSexApi;
   colorId?: string | null;
   color?: ColorRef | null;
@@ -55,6 +55,15 @@ const sizeToUi: Record<DogSizeApi, Dog["size"]> = {
   LARGE: "large",
 };
 
+export function computeAgeYears(iso: string | null | undefined): number | undefined {
+  if (!iso) return undefined;
+  const birth = new Date(iso);
+  if (isNaN(birth.getTime())) return undefined;
+  const ms = Date.now() - birth.getTime();
+  const years = Math.floor(ms / (365.25 * 24 * 60 * 60 * 1000));
+  return years >= 0 ? years : undefined;
+}
+
 export function mapApiDogToDog(dog: DogApi, locale: "es" | "en" = "es"): Dog {
   const status: DogStatus = dog.lostStatus ? "lost" : "normal";
   const breedLabel = dog.breed
@@ -76,7 +85,8 @@ export function mapApiDogToDog(dog: DogApi, locale: "es" | "en" = "es"): Dog {
     id: dog.id,
     name: dog.name,
     breed: breedLabel,
-    age: dog.ageYears ?? undefined,
+    age: computeAgeYears(dog.birthDate),
+    birthDate: dog.birthDate ?? undefined,
     sex: sexToUi[dog.sex],
     color: colorLabel,
     size: sizeToUi[dog.size],
@@ -86,6 +96,8 @@ export function mapApiDogToDog(dog: DogApi, locale: "es" | "en" = "es"): Dog {
   };
 }
 
+export type UpdateDogPayload = Partial<CreateDogPayload>;
+
 export const dogsApi = {
   create: (payload: CreateDogPayload) =>
     http<DogApi>("/dogs", {
@@ -94,4 +106,13 @@ export const dogsApi = {
     }),
   listMine: () => http<DogApi[]>("/dogs"),
   getById: (id: string) => http<DogApi>(`/dogs/${id}`),
+  update: (id: string, payload: UpdateDogPayload) =>
+    http<DogApi>(`/dogs/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+  remove: (id: string) =>
+    http<{ success: boolean }>(`/dogs/${id}`, {
+      method: "DELETE",
+    }),
 };

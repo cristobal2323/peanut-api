@@ -91,8 +91,10 @@ type Translations = Record<
         sexLabel: string;
         sexMale: string;
         sexFemale: string;
-        ageLabel: string;
-        agePlaceholder: string;
+        birthDateLabel: string;
+        birthDatePlaceholder: string;
+        birthDateConfirm: string;
+        birthDateCancel: string;
         colorLabel: string;
         colorPlaceholder: string;
         colorSearchPlaceholder: string;
@@ -218,8 +220,10 @@ const translations: Translations = {
         sexLabel: "Sex",
         sexMale: "Male",
         sexFemale: "Female",
-        ageLabel: "Age (years)",
-        agePlaceholder: "E.g. 4",
+        birthDateLabel: "Birth date",
+        birthDatePlaceholder: "Select a date",
+        birthDateConfirm: "Done",
+        birthDateCancel: "Cancel",
         colorLabel: "Color",
         colorPlaceholder: "Select a color",
         colorSearchPlaceholder: "Search color...",
@@ -342,8 +346,10 @@ const translations: Translations = {
         sexLabel: "Sexo",
         sexMale: "Macho",
         sexFemale: "Hembra",
-        ageLabel: "Edad (años)",
-        agePlaceholder: "Ej. 4",
+        birthDateLabel: "Fecha de nacimiento",
+        birthDatePlaceholder: "Selecciona una fecha",
+        birthDateConfirm: "Listo",
+        birthDateCancel: "Cancelar",
         colorLabel: "Color",
         colorPlaceholder: "Selecciona un color",
         colorSearchPlaceholder: "Buscar color...",

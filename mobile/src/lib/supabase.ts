@@ -28,17 +28,21 @@ export async function uploadDogPhoto(uri: string, userId: string): Promise<strin
     throw new Error("Supabase not configured");
   }
 
-  const extMatch = uri.split(".").pop()?.toLowerCase();
+  const extMatch = uri.split(".").pop()?.toLowerCase().split("?")[0];
   const ext = extMatch && extMatch.length <= 5 ? extMatch : "jpg";
   const path = `user/${userId}/${Date.now()}.${ext}`;
+  const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
 
   const response = await fetch(uri);
-  const blob = await response.blob();
-  const contentType = blob.type && blob.type !== "" ? blob.type : `image/${ext}`;
+  const arrayBuffer = await response.arrayBuffer();
+
+  if (arrayBuffer.byteLength === 0) {
+    throw new Error("Empty photo file");
+  }
 
   const { error } = await supabase.storage
     .from(DOG_PHOTOS_BUCKET)
-    .upload(path, blob, {
+    .upload(path, arrayBuffer, {
       contentType,
       upsert: false,
     });
