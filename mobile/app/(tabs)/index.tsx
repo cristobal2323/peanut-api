@@ -16,8 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { spacing, colors, fonts } from "../../src/theme";
 import { useAuthStore } from "../../src/store/auth";
 import { useDogsStore } from "../../src/store/dogs";
-import { api } from "../../src/api/mockApi";
 import { dogsApi, mapApiDogToDog } from "../../src/api/dogs";
+import { lostReportsApi } from "../../src/api/lostReports";
 import { queryKeys } from "../../src/lib/queryClient";
 import { usePreferencesStore } from "../../src/store/preferences";
 import { useTranslation } from "../../src/i18n";
@@ -53,7 +53,7 @@ export default function HomeScreen() {
 
   const { data: lostReports = [] } = useQuery({
     queryKey: queryKeys.lostReports,
-    queryFn: api.fetchLostReports,
+    queryFn: lostReportsApi.getActive,
   });
 
   const recentActivity = [

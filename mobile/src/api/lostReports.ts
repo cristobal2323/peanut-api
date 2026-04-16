@@ -40,6 +40,36 @@ export type CreateLostReportPayload = {
   rewardOffered?: number;
 };
 
+export type PublicStatusParam = "active" | "resolved" | "any";
+
+export type ListPublicParams = {
+  skip?: number;
+  take?: number;
+  status?: PublicStatusParam;
+  breedId?: string;
+  colorId?: string;
+  maxKm?: number;
+  lat?: number;
+  lng?: number;
+  since?: string;
+  search?: string;
+};
+
+export type ListPublicResponse = {
+  items: LostReportApi[];
+  nextCursor: number | null;
+};
+
+function buildQuery(params: ListPublicParams): string {
+  const parts: string[] = [];
+  (Object.keys(params) as (keyof ListPublicParams)[]).forEach((k) => {
+    const v = params[k];
+    if (v === undefined || v === null || v === "") return;
+    parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+  });
+  return parts.length ? `?${parts.join("&")}` : "";
+}
+
 export const lostReportsApi = {
   create: (payload: CreateLostReportPayload) =>
     http<LostReportApi>("/lost-reports", {
@@ -47,6 +77,8 @@ export const lostReportsApi = {
       body: JSON.stringify(payload),
     }),
   getActive: () => http<LostReportApi[]>("/lost-reports/active"),
+  listPublic: (params: ListPublicParams = {}) =>
+    http<ListPublicResponse>(`/lost-reports/public${buildQuery(params)}`),
   listMine: () => http<LostReportApi[]>("/lost-reports/mine"),
   getById: (id: string) => http<LostReportApi>(`/lost-reports/${id}`),
   resolve: (id: string) =>
@@ -71,6 +103,9 @@ export function haversineKm(
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(sa)));
 }
 
+const statusToReportType = (s: LostReportStatusApi): "lost" | "found" =>
+  s === "RESOLVED" ? "found" : "lost";
+
 export function mapApiLostReportToCommunityReport(
   r: LostReportApi,
   locale: Locale = "es",
@@ -86,7 +121,7 @@ export function mapApiLostReportToCommunityReport(
     dogName: dog?.name ?? "Perro",
     breed: dog?.breed ?? "",
     description: r.description ?? undefined,
-    reportType: "lost",
+    reportType: statusToReportType(r.status),
     photo: dog?.photo ?? "",
     distanceKm: Math.round(distance * 10) / 10,
     location:
@@ -105,15 +140,16 @@ export function mapApiLostReportToMapPin(
   if (!loc) return null;
   const dog = r.dog ? mapApiDogToDog(r.dog, locale) : undefined;
   const distance = userCoords ? haversineKm(userCoords, loc) : 0;
+  const status = statusToReportType(r.status);
   return {
     id: r.id,
     lat: loc.latitude,
     lng: loc.longitude,
     name: dog?.name ?? "Perro",
     photo: dog?.photo,
-    status: "lost",
+    status,
     distanceKm: Math.round(distance * 10) / 10,
-    reportType: "lost",
+    reportType: status,
     breed: dog?.breed,
     location: loc.addressText ?? undefined,
   };

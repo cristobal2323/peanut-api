@@ -67,10 +67,12 @@ export default function MapScreen() {
     })();
   }, []);
 
-  const { data: apiReports = [] } = useQuery({
-    queryKey: queryKeys.lostReports,
-    queryFn: lostReportsApi.getActive,
+  const { data: page } = useQuery({
+    queryKey: queryKeys.lostReportsPublic,
+    queryFn: () => lostReportsApi.listPublic({ take: 500 }),
   });
+
+  const apiReports = page?.items ?? [];
 
   const pins = useMemo<MapPin[]>(
     () =>

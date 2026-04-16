@@ -2,6 +2,10 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { LostReportStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLostReportDto } from './dto/create-lost-report.dto';
+import {
+  ListPublicLostReportsDto,
+  PublicStatusFilter,
+} from './dto/list-public-lost-reports.dto';
 import { t } from '../i18n/messages';
 
 type Tx = Prisma.TransactionClient;
@@ -87,6 +91,80 @@ export class LostReportsService {
         lastSeenLocation: true,
       },
     });
+  }
+
+  async listPublic(filter: ListPublicLostReportsDto = {}) {
+    const skip = filter.skip ?? 0;
+    const take = filter.take ?? 20;
+
+    const statusIn =
+      filter.status === PublicStatusFilter.ACTIVE
+        ? [LostReportStatus.ACTIVE]
+        : filter.status === PublicStatusFilter.RESOLVED
+          ? [LostReportStatus.RESOLVED]
+          : [LostReportStatus.ACTIVE, LostReportStatus.RESOLVED];
+
+    const dogFilter: Prisma.DogWhereInput = {};
+    if (filter.breedId) dogFilter.breedId = filter.breedId;
+    if (filter.colorId) dogFilter.colorId = filter.colorId;
+
+    let locationFilter: Prisma.LocationWhereInput | undefined;
+    let requireLocation = false;
+    if (
+      filter.maxKm !== undefined &&
+      filter.lat !== undefined &&
+      filter.lng !== undefined
+    ) {
+      const latDeg = filter.maxKm / 111;
+      const lngDeg =
+        filter.maxKm / (111 * Math.cos((filter.lat * Math.PI) / 180));
+      locationFilter = {
+        latitude: { gte: filter.lat - latDeg, lte: filter.lat + latDeg },
+        longitude: { gte: filter.lng - lngDeg, lte: filter.lng + lngDeg },
+      };
+      requireLocation = true;
+    }
+
+    const where: Prisma.LostReportWhereInput = {
+      status: { in: statusIn },
+      ...(Object.keys(dogFilter).length ? { dog: { is: dogFilter } } : {}),
+      ...(requireLocation
+        ? {
+            lastSeenLocationId: { not: null },
+            lastSeenLocation: { is: locationFilter },
+          }
+        : {}),
+      ...(filter.since ? { createdAt: { gte: new Date(filter.since) } } : {}),
+      ...(filter.search
+        ? {
+            OR: [
+              {
+                dog: {
+                  is: {
+                    name: { contains: filter.search, mode: 'insensitive' },
+                  },
+                },
+              },
+              { description: { contains: filter.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const items = await this.prisma.lostReport.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+      include: {
+        dog: { include: { breed: true, color: true } },
+        owner: { select: { id: true, name: true } },
+        lastSeenLocation: true,
+      },
+    });
+
+    const nextCursor = items.length === take ? skip + take : null;
+    return { items, nextCursor };
   }
 
   async getById(id: string, lang?: string) {

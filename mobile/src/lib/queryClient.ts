@@ -4,6 +4,7 @@ export const queryKeys = {
   dogs: ["dogs"] as const,
   dog: (id: string) => ["dog", id] as const,
   lostReports: ["lostReports"] as const,
+  lostReportsPublic: ["lostReports", "public"] as const,
   lostReportsMine: ["lostReports", "mine"] as const,
   lostReport: (id: string) => ["lostReport", id] as const,
   communityReports: ["communityReports"] as const,

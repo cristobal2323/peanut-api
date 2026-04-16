@@ -1,15 +1,17 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
+  FlatList,
   ScrollView,
   Pressable,
   TextInput,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Text } from "react-native-paper";
 import * as Location from "expo-location";
 import { EmptyState } from "../../src/components/EmptyState";
@@ -18,11 +20,14 @@ import { spacing, colors, radii, fonts } from "../../src/theme";
 import {
   lostReportsApi,
   mapApiLostReportToCommunityReport,
+  PublicStatusParam,
 } from "../../src/api/lostReports";
+import { breedsApi, BreedOption } from "../../src/api/breeds";
+import { colorsApi, ColorOption } from "../../src/api/colors";
 import { queryKeys } from "../../src/lib/queryClient";
 import { usePreferencesStore } from "../../src/store/preferences";
 
-type FilterValue = "all" | "lost" | "found" | "recent";
+type FilterValue = "all" | "lost" | "found";
 type DateFilter = "today" | "week" | "month";
 
 const DATE_CUTOFFS: Record<DateFilter, number> = {
@@ -35,11 +40,14 @@ const FILTERS: { value: FilterValue; label: string }[] = [
   { value: "all", label: "Todos" },
   { value: "lost", label: "Perdidos" },
   { value: "found", label: "Encontrados" },
-  { value: "recent", label: "Recientes" },
 ];
 
+const PAGE_SIZE = 20;
+
 function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const ts = new Date(dateStr).getTime();
+  if (isNaN(ts)) return "";
+  const diff = Date.now() - ts;
   const hours = Math.floor(diff / 3600000);
   if (hours < 1) return "Hace un momento";
   if (hours < 24) return `Hace ${hours}h`;
@@ -48,15 +56,30 @@ function timeAgo(dateStr: string): string {
   return `Hace ${days} días`;
 }
 
+const statusParam = (f: FilterValue): PublicStatusParam =>
+  f === "lost" ? "active" : f === "found" ? "resolved" : "any";
+
+function useDebouncedValue<T>(value: T, delay = 300): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
   const locale = usePreferencesStore((s) => s.locale);
+  const listRef = useRef<FlatList>(null);
+
   const [activeFilter, setActiveFilter] = useState<FilterValue>("all");
   const [showFilters, setShowFilters] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [distanceFilter, setDistanceFilter] = useState<number | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
   const [breedFilter, setBreedFilter] = useState<string | null>(null);
+  const [colorFilter, setColorFilter] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [userCoords, setUserCoords] = useState<
     { latitude: number; longitude: number } | null
@@ -78,76 +101,113 @@ export default function FeedScreen() {
     })();
   }, []);
 
+  const debouncedSearch = useDebouncedValue(searchQuery, 350);
+
+  const sinceIso = useMemo(() => {
+    if (!dateFilter) return undefined;
+    return new Date(Date.now() - DATE_CUTOFFS[dateFilter]).toISOString();
+  }, [dateFilter]);
+
+  const canFilterByDistance = !!userCoords && distanceFilter != null;
+
   const activeExtraCount =
     (distanceFilter != null ? 1 : 0) +
     (dateFilter != null ? 1 : 0) +
-    (breedFilter != null ? 1 : 0);
+    (breedFilter != null ? 1 : 0) +
+    (colorFilter != null ? 1 : 0);
 
-  const { data: apiReports = [], isLoading } = useQuery({
-    queryKey: queryKeys.lostReports,
-    queryFn: lostReportsApi.getActive,
+  const filterKey = useMemo(
+    () => ({
+      status: statusParam(activeFilter),
+      search: debouncedSearch.trim() || undefined,
+      maxKm: canFilterByDistance ? distanceFilter ?? undefined : undefined,
+      lat: canFilterByDistance ? userCoords?.latitude : undefined,
+      lng: canFilterByDistance ? userCoords?.longitude : undefined,
+      since: sinceIso,
+      breedId: breedFilter ?? undefined,
+      colorId: colorFilter ?? undefined,
+    }),
+    [
+      activeFilter,
+      debouncedSearch,
+      distanceFilter,
+      userCoords?.latitude,
+      userCoords?.longitude,
+      sinceIso,
+      breedFilter,
+      colorFilter,
+      canFilterByDistance,
+    ]
+  );
+
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    refetch,
+    isRefetching,
+  } = useInfiniteQuery({
+    queryKey: [...queryKeys.lostReportsPublic, filterKey],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      lostReportsApi.listPublic({ ...filterKey, skip: pageParam, take: PAGE_SIZE }),
+    getNextPageParam: (last) => last.nextCursor,
   });
 
-  const reports = useMemo(
-    () =>
-      apiReports.map((r) =>
-        mapApiLostReportToCommunityReport(r, locale, userCoords)
-      ),
-    [apiReports, locale, userCoords]
+  const reports = useMemo(() => {
+    const items = data?.pages.flatMap((p) => p.items) ?? [];
+    return items.map((r) =>
+      mapApiLostReportToCommunityReport(r, locale, userCoords)
+    );
+  }, [data, locale, userCoords]);
+
+  const { data: breeds = [] } = useQuery({
+    queryKey: queryKeys.breeds(),
+    queryFn: () => breedsApi.list(),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: colorOptions = [] } = useQuery({
+    queryKey: queryKeys.colors(),
+    queryFn: () => colorsApi.list(),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const clearAllFilters = () => {
+    setDistanceFilter(null);
+    setDateFilter(null);
+    setBreedFilter(null);
+    setColorFilter(null);
+  };
+
+  const renderHeader = () => (
+    <View style={styles.listHeader}>
+      <View style={styles.banner}>
+        <View style={styles.bannerIcon}>
+          <MaterialCommunityIcons
+            name="map-marker-radius"
+            size={24}
+            color={colors.primaryContainer}
+          />
+        </View>
+        <View style={styles.bannerText}>
+          <Text style={styles.bannerTitle}>
+            {reports.length} {reports.length === 1 ? "reporte" : "reportes"}
+          </Text>
+          <Text style={styles.bannerSubtitle}>
+            {canFilterByDistance
+              ? `Dentro de ${distanceFilter} km de ti`
+              : "Comunidad completa"}
+          </Text>
+        </View>
+      </View>
+    </View>
   );
-
-  const breeds = useMemo(
-    () => [...new Set(reports.map((r) => r.breed))].sort(),
-    [reports],
-  );
-
-  const filtered = useMemo(() => {
-    let result = [...reports];
-
-    // Categoria
-    if (activeFilter === "lost") result = result.filter((r) => r.reportType === "lost");
-    else if (activeFilter === "found") result = result.filter((r) => r.reportType === "found");
-
-    // Texto
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (r) =>
-          r.dogName.toLowerCase().includes(q) ||
-          r.breed.toLowerCase().includes(q) ||
-          (r.description?.toLowerCase().includes(q) ?? false) ||
-          r.location.toLowerCase().includes(q),
-      );
-    }
-
-    // Distancia
-    if (distanceFilter != null) {
-      result = result.filter((r) => r.distanceKm <= distanceFilter);
-    }
-
-    // Fecha
-    if (dateFilter) {
-      const now = Date.now();
-      result = result.filter(
-        (r) => now - new Date(r.createdAt).getTime() <= DATE_CUTOFFS[dateFilter],
-      );
-    }
-
-    // Raza
-    if (breedFilter) {
-      result = result.filter((r) => r.breed === breedFilter);
-    }
-
-    // Ordenar recientes
-    if (activeFilter === "recent")
-      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    return result;
-  }, [reports, activeFilter, searchQuery, distanceFilter, dateFilter, breedFilter]);
 
   return (
     <View style={styles.container}>
-      {/* ── Sticky header ── */}
       <View style={[styles.stickyHeader, { paddingTop: insets.top + spacing.md }]}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -163,9 +223,7 @@ export default function FeedScreen() {
               if (showFilters) {
                 setActiveFilter("all");
                 setSearchQuery("");
-                setDistanceFilter(null);
-                setDateFilter(null);
-                setBreedFilter(null);
+                clearAllFilters();
               }
             }}
           >
@@ -177,14 +235,13 @@ export default function FeedScreen() {
           </Pressable>
         </View>
 
-        {/* Search bar + Filtros button */}
         {showFilters && (
           <View style={styles.searchRow}>
             <View style={styles.searchBar}>
               <MaterialCommunityIcons name="magnify" size={20} color={colors.textMuted} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Buscar por nombre, raza..."
+                placeholder="Buscar por nombre, descripción..."
                 placeholderTextColor={colors.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -214,7 +271,6 @@ export default function FeedScreen() {
           </View>
         )}
 
-        {/* Category chips */}
         {showFilters && (
           <ScrollView
             horizontal
@@ -230,9 +286,7 @@ export default function FeedScreen() {
                   onPress={() => setActiveFilter(f.value)}
                   style={[styles.chip, active && styles.chipActive]}
                 >
-                  <Text
-                    style={[styles.chipText, active && styles.chipTextActive]}
-                  >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
                     {f.label}
                   </Text>
                 </Pressable>
@@ -240,10 +294,8 @@ export default function FeedScreen() {
             })}
           </ScrollView>
         )}
-
       </View>
 
-      {/* ── Bottom sheet modal ── */}
       <Modal
         visible={showSheet}
         transparent
@@ -255,88 +307,142 @@ export default function FeedScreen() {
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Filtros</Text>
 
-            {/* Distance */}
-            <Text style={styles.sheetSectionTitle}>Distancia</Text>
-            <View style={styles.sheetChipsWrap}>
-              {([1, 5, 10] as const).map((km) => {
-                const active = distanceFilter === km;
-                return (
-                  <Pressable
-                    key={`d-${km}`}
-                    onPress={() => setDistanceFilter(active ? null : km)}
-                    style={[styles.filterChip, active && styles.filterChipActive]}
-                  >
-                    <MaterialCommunityIcons
-                      name="map-marker-distance"
-                      size={14}
-                      color={active ? colors.onPrimary : colors.textMuted}
-                    />
-                    <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                      {"< "}{km} km
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
+              {/* Distance */}
+              <Text style={styles.sheetSectionTitle}>Distancia</Text>
+              {!userCoords && (
+                <Text style={styles.sheetHint}>
+                  Activa la ubicación para usar este filtro
+                </Text>
+              )}
+              <View style={styles.sheetChipsWrap}>
+                {([1, 5, 10, 25] as const).map((km) => {
+                  const active = distanceFilter === km;
+                  const disabled = !userCoords;
+                  return (
+                    <Pressable
+                      key={`d-${km}`}
+                      onPress={() =>
+                        !disabled && setDistanceFilter(active ? null : km)
+                      }
+                      disabled={disabled}
+                      style={[
+                        styles.filterChip,
+                        active && styles.filterChipActive,
+                        disabled && styles.filterChipDisabled,
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name="map-marker-distance"
+                        size={14}
+                        color={active ? colors.onPrimary : colors.textMuted}
+                      />
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          active && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {"< "}{km} km
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-            {/* Date */}
-            <Text style={styles.sheetSectionTitle}>Fecha</Text>
-            <View style={styles.sheetChipsWrap}>
-              {([
-                { value: "today" as DateFilter, label: "Hoy" },
-                { value: "week" as DateFilter, label: "Semana" },
-                { value: "month" as DateFilter, label: "Mes" },
-              ]).map((d) => {
-                const active = dateFilter === d.value;
-                return (
-                  <Pressable
-                    key={`t-${d.value}`}
-                    onPress={() => setDateFilter(active ? null : d.value)}
-                    style={[styles.filterChip, active && styles.filterChipActive]}
-                  >
-                    <MaterialCommunityIcons
-                      name="calendar-outline"
-                      size={14}
-                      color={active ? colors.onPrimary : colors.textMuted}
-                    />
-                    <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                      {d.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+              {/* Date */}
+              <Text style={styles.sheetSectionTitle}>Fecha</Text>
+              <View style={styles.sheetChipsWrap}>
+                {([
+                  { value: "today" as DateFilter, label: "Hoy" },
+                  { value: "week" as DateFilter, label: "Semana" },
+                  { value: "month" as DateFilter, label: "Mes" },
+                ]).map((d) => {
+                  const active = dateFilter === d.value;
+                  return (
+                    <Pressable
+                      key={`t-${d.value}`}
+                      onPress={() => setDateFilter(active ? null : d.value)}
+                      style={[styles.filterChip, active && styles.filterChipActive]}
+                    >
+                      <MaterialCommunityIcons
+                        name="calendar-outline"
+                        size={14}
+                        color={active ? colors.onPrimary : colors.textMuted}
+                      />
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          active && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {d.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-            {/* Breed */}
-            <Text style={styles.sheetSectionTitle}>Raza</Text>
-            <View style={styles.sheetChipsWrap}>
-              {breeds.map((breed) => {
-                const active = breedFilter === breed;
-                return (
-                  <Pressable
-                    key={`b-${breed}`}
-                    onPress={() => setBreedFilter(active ? null : breed)}
-                    style={[styles.filterChip, active && styles.filterChipActive]}
-                  >
-                    <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                      {breed}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+              {/* Breed */}
+              <Text style={styles.sheetSectionTitle}>Raza</Text>
+              <View style={styles.sheetChipsWrap}>
+                {breeds.map((breed: BreedOption) => {
+                  const active = breedFilter === breed.id;
+                  return (
+                    <Pressable
+                      key={`b-${breed.id}`}
+                      onPress={() => setBreedFilter(active ? null : breed.id)}
+                      style={[styles.filterChip, active && styles.filterChipActive]}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          active && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {breed.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-            {/* Actions */}
+              {/* Color */}
+              <Text style={styles.sheetSectionTitle}>Color</Text>
+              <View style={styles.sheetChipsWrap}>
+                {colorOptions.map((color: ColorOption) => {
+                  const active = colorFilter === color.id;
+                  return (
+                    <Pressable
+                      key={`c-${color.id}`}
+                      onPress={() => setColorFilter(active ? null : color.id)}
+                      style={[styles.filterChip, active && styles.filterChipActive]}
+                    >
+                      {color.hex && (
+                        <View
+                          style={[
+                            styles.colorDot,
+                            { backgroundColor: color.hex },
+                          ]}
+                        />
+                      )}
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          active && styles.filterChipTextActive,
+                        ]}
+                      >
+                        {color.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+
             <View style={styles.sheetActions}>
               {activeExtraCount > 0 && (
-                <Pressable
-                  style={styles.sheetClearBtn}
-                  onPress={() => {
-                    setDistanceFilter(null);
-                    setDateFilter(null);
-                    setBreedFilter(null);
-                  }}
-                >
+                <Pressable style={styles.sheetClearBtn} onPress={clearAllFilters}>
                   <Text style={styles.sheetClearText}>Limpiar</Text>
                 </Pressable>
               )}
@@ -351,52 +457,51 @@ export default function FeedScreen() {
         </Pressable>
       </Modal>
 
-      {/* ── Scrollable content ── */}
-      <ScrollView
+      <FlatList
+        ref={listRef}
+        data={reports}
+        keyExtractor={(r) => r.id}
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Active reports banner */}
-        <View style={styles.banner}>
-          <View style={styles.bannerIcon}>
-            <MaterialCommunityIcons
-              name="map-marker-radius"
-              size={24}
-              color={colors.primaryContainer}
-            />
-          </View>
-          <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>
-              {filtered.length} reportes activos
-            </Text>
-            <Text style={styles.bannerSubtitle}>En tu área (radio de 5 km)</Text>
-          </View>
-        </View>
-
-        {/* Report cards */}
-        {isLoading ? (
-          <Text style={styles.loading}>Cargando...</Text>
-        ) : filtered.length === 0 ? (
-          <EmptyState icon="map-marker-off" message="No hay reportes en esta categoría" />
-        ) : (
-          filtered.map((report) => (
-            <DogCard
-              key={report.id}
-              photo={report.photo}
-              name={report.dogName}
-              breed={report.breed}
-              description={report.description}
-              status={report.reportType === "found" ? "found" : "lost"}
-              distanceKm={report.distanceKm}
-              date={timeAgo(report.createdAt)}
-              location={report.location}
-              style={styles.cardSpacing}
-            />
-          ))
+        ListHeaderComponent={renderHeader}
+        renderItem={({ item }) => (
+          <DogCard
+            photo={item.photo}
+            name={item.dogName}
+            breed={item.breed}
+            description={item.description}
+            status={item.reportType === "found" ? "found" : "lost"}
+            distanceKm={item.distanceKm}
+            date={timeAgo(item.createdAt)}
+            location={item.location}
+            style={styles.cardSpacing}
+          />
         )}
-
-        <View style={{ height: spacing.xxl }} />
-      </ScrollView>
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+        }}
+        onEndReachedThreshold={0.4}
+        refreshing={isRefetching}
+        onRefresh={refetch}
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.centerFeedback}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : (
+            <EmptyState icon="map-marker-off" message="No hay reportes en esta categoría" />
+          )
+        }
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : (
+            <View style={{ height: spacing.xxl }} />
+          )
+        }
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
@@ -413,6 +518,10 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  listHeader: {
+    paddingTop: spacing.xs,
   },
   header: {
     flexDirection: "row",
@@ -420,9 +529,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: spacing.md,
   },
-  headerLeft: {
-    flex: 1,
-  },
+  headerLeft: { flex: 1 },
   title: {
     fontSize: 28,
     fontFamily: fonts.heading,
@@ -443,13 +550,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Filters
-  filtersScroll: {
-    marginBottom: spacing.md,
-  },
-  filtersRow: {
-    gap: spacing.sm,
-  },
+  filtersScroll: { marginBottom: spacing.md },
+  filtersRow: { gap: spacing.sm },
   chip: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm + 2,
@@ -472,7 +574,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
   },
 
-  // Search row
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -499,7 +600,6 @@ const styles = StyleSheet.create({
     padding: 0,
   },
 
-  // Filtros button
   filtrosBtn: {
     width: 42,
     height: 42,
@@ -531,7 +631,6 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  // Bottom sheet
   sheetOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -543,6 +642,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radii.xl,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxl,
+    maxHeight: "80%",
+  },
+  sheetScroll: {
+    marginBottom: spacing.md,
   },
   sheetHandle: {
     width: 40,
@@ -566,6 +669,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     marginTop: spacing.md,
   },
+  sheetHint: {
+    fontSize: 12,
+    fontFamily: fonts.body,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+  },
   sheetChipsWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -574,7 +683,7 @@ const styles = StyleSheet.create({
   sheetActions: {
     flexDirection: "row",
     gap: spacing.md,
-    marginTop: spacing.xl,
+    marginTop: spacing.md,
   },
   sheetClearBtn: {
     flex: 1,
@@ -604,7 +713,6 @@ const styles = StyleSheet.create({
     color: colors.onPrimary,
   },
 
-  // Filter chips (used inside sheet)
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -620,6 +728,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
+  filterChipDisabled: {
+    opacity: 0.4,
+  },
   filterChipText: {
     fontSize: 12,
     fontFamily: fonts.bodyMedium,
@@ -629,7 +740,14 @@ const styles = StyleSheet.create({
     color: colors.onPrimary,
     fontFamily: fonts.bodySemiBold,
   },
-  // Banner
+  colorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.outlineVariant,
+  },
+
   banner: {
     flexDirection: "row",
     alignItems: "center",
@@ -652,9 +770,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  bannerText: {
-    flex: 1,
-  },
+  bannerText: { flex: 1 },
   bannerTitle: {
     fontSize: 15,
     fontFamily: fonts.headingMedium,
@@ -667,15 +783,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Cards
-  cardSpacing: {
-    marginBottom: spacing.md,
-  },
+  cardSpacing: { marginBottom: spacing.md },
 
-  loading: {
-    textAlign: "center",
-    color: colors.textMuted,
-    marginTop: spacing.xl,
-    fontFamily: fonts.body,
+  centerFeedback: {
+    paddingVertical: spacing.xl,
+    alignItems: "center",
+  },
+  footerLoader: {
+    paddingVertical: spacing.lg,
+    alignItems: "center",
   },
 });

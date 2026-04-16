@@ -5,11 +5,13 @@ import {
   Headers,
   Param,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { LostReportsService } from './lost-reports.service';
 import { CreateLostReportDto } from './dto/create-lost-report.dto';
+import { ListPublicLostReportsDto } from './dto/list-public-lost-reports.dto';
 
 type AuthedRequest = Request & { user: { sub: string; email?: string; role?: string } };
 
@@ -29,6 +31,11 @@ export class LostReportsController {
   @Get('active')
   getActive() {
     return this.lostReportsService.getActive();
+  }
+
+  @Get('public')
+  listPublic(@Query() query: ListPublicLostReportsDto) {
+    return this.lostReportsService.listPublic(query);
   }
 
   @Get('mine')
