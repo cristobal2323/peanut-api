@@ -85,6 +85,7 @@ export interface CommunityReport {
   location: string;
   createdAt: string;
   dogId?: string;
+  reporterId?: string;
 }
 
 export interface AuthResponse {

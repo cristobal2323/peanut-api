@@ -10,6 +10,7 @@ export const queryKeys = {
   communityReports: ["communityReports"] as const,
   notifications: ["notifications"] as const,
   sightings: (dogId?: string) => ["sightings", dogId ?? "all"] as const,
+  sightingsPublic: ["sightings", "public"] as const,
   match: (id: string) => ["match", id] as const,
   mapPins: ["mapPins"] as const,
   userStats: (id: string) => ["userStats", id] as const,

@@ -43,6 +43,12 @@ enum LostReportStatus {
   CANCELLED
 }
 
+enum SightingStatus {
+  ACTIVE
+  FOUND
+  CLOSED
+}
+
 enum TargetType {
   LOST_REPORT
   SIGHTING
@@ -280,14 +286,15 @@ model LostReport {
 }
 
 model Sighting {
-  id           String   @id @default(uuid())
+  id           String          @id @default(uuid())
   dogId        String?
   lostReportId String?
   userId       String
   locationId   String
   imageId      String?
   notes        String?
-  createdAt    DateTime @default(now())
+  status       SightingStatus  @default(ACTIVE)
+  createdAt    DateTime        @default(now())
 
   dog        Dog?       @relation(fields: [dogId], references: [id])
   lostReport LostReport? @relation(fields: [lostReportId], references: [id])

@@ -1,22 +1,26 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Prisma, SightingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSightingDto } from './dto/create-sighting.dto';
-import { t } from '../i18n/messages';
+import { ListPublicSightingsDto } from './dto/list-public-sightings.dto';
+
+const SIGHTING_INCLUDE = {
+  location: true,
+  image: true,
+  user: { select: { id: true, name: true } },
+  dog: { include: { breed: true, color: true } },
+} as const;
 
 @Injectable()
 export class SightingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(payload: CreateSightingDto, lang?: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: payload.userId } });
-    if (!user) {
-      throw new HttpException(t(lang, 'USER_NOT_FOUND'), HttpStatus.BAD_REQUEST);
-    }
-
+  async create(userId: string, payload: CreateSightingDto) {
     const location = await this.prisma.location.create({
       data: {
         latitude: payload.latitude,
         longitude: payload.longitude,
+        addressText: payload.addressText,
       },
     });
 
@@ -26,26 +30,114 @@ export class SightingsService {
             url: payload.imageUrl,
             type: 'image',
             source: 'user_upload',
-            createdByUserId: payload.userId,
+            createdByUserId: userId,
           },
         })
       : null;
 
     return this.prisma.sighting.create({
       data: {
-        userId: payload.userId,
+        userId,
         dogId: payload.dogId,
         lostReportId: payload.lostReportId,
         locationId: location.id,
         imageId: media?.id,
         notes: payload.notes,
       },
-      include: {
-        location: true,
-        image: true,
-        user: { select: { id: true, name: true } },
-        dog: true,
-      },
+      include: SIGHTING_INCLUDE,
+    });
+  }
+
+  async listPublic(filter: ListPublicSightingsDto = {}) {
+    const skip = filter.skip ?? 0;
+    const take = filter.take ?? 20;
+
+    let locationFilter: Prisma.LocationWhereInput | undefined;
+    let requireLocation = false;
+
+    if (
+      filter.minLat !== undefined &&
+      filter.maxLat !== undefined &&
+      filter.minLng !== undefined &&
+      filter.maxLng !== undefined
+    ) {
+      const latRange = { gte: filter.minLat, lte: filter.maxLat };
+      if (filter.minLng <= filter.maxLng) {
+        locationFilter = {
+          latitude: latRange,
+          longitude: { gte: filter.minLng, lte: filter.maxLng },
+        };
+      } else {
+        locationFilter = {
+          latitude: latRange,
+          OR: [
+            { longitude: { gte: filter.minLng, lte: 180 } },
+            { longitude: { gte: -180, lte: filter.maxLng } },
+          ],
+        };
+      }
+      requireLocation = true;
+    } else if (
+      filter.maxKm !== undefined &&
+      filter.lat !== undefined &&
+      filter.lng !== undefined
+    ) {
+      const latDeg = filter.maxKm / 111;
+      const lngDeg =
+        filter.maxKm / (111 * Math.cos((filter.lat * Math.PI) / 180));
+      locationFilter = {
+        latitude: { gte: filter.lat - latDeg, lte: filter.lat + latDeg },
+        longitude: { gte: filter.lng - lngDeg, lte: filter.lng + lngDeg },
+      };
+      requireLocation = true;
+    }
+
+    const where: Prisma.SightingWhereInput = {
+      lostReportId: null,
+      status: { in: [SightingStatus.ACTIVE, SightingStatus.FOUND] },
+      ...(requireLocation ? { location: { is: locationFilter } } : {}),
+      ...(filter.since ? { createdAt: { gte: new Date(filter.since) } } : {}),
+    };
+
+    const items = await this.prisma.sighting.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+      include: SIGHTING_INCLUDE,
+    });
+
+    const nextCursor = items.length === take ? skip + take : null;
+    return { items, nextCursor };
+  }
+
+  async markFound(id: string, userId: string) {
+    return this.changeStatus(id, userId, SightingStatus.FOUND);
+  }
+
+  async close(id: string, userId: string) {
+    return this.changeStatus(id, userId, SightingStatus.CLOSED);
+  }
+
+  private async changeStatus(
+    id: string,
+    userId: string,
+    nextStatus: SightingStatus,
+  ) {
+    const sighting = await this.prisma.sighting.findUnique({ where: { id } });
+    if (!sighting) {
+      throw new HttpException('Sighting not found', HttpStatus.NOT_FOUND);
+    }
+    if (sighting.userId !== userId) {
+      throw new HttpException('Not authorized', HttpStatus.FORBIDDEN);
+    }
+    if (sighting.status !== SightingStatus.ACTIVE) {
+      throw new HttpException('Sighting is not active', HttpStatus.BAD_REQUEST);
+    }
+    return this.prisma.sighting.update({
+      where: { id },
+      data: { status: nextStatus },
+      include: SIGHTING_INCLUDE,
     });
   }
 
@@ -53,12 +145,7 @@ export class SightingsService {
     return this.prisma.sighting.findMany({
       where: { lostReportId },
       orderBy: { createdAt: 'desc' },
-      include: {
-        location: true,
-        image: true,
-        user: { select: { id: true, name: true } },
-        dog: true,
-      },
+      include: SIGHTING_INCLUDE,
     });
   }
 }

@@ -1,14 +1,30 @@
-import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { SightingsService } from './sightings.service';
 import { CreateSightingDto } from './dto/create-sighting.dto';
+import { ListPublicSightingsDto } from './dto/list-public-sightings.dto';
 
 @Controller('sightings')
 export class SightingsController {
   constructor(private readonly sightingsService: SightingsService) {}
 
   @Post()
-  create(@Body() body: CreateSightingDto, @Headers('accept-language') lang?: string) {
-    return this.sightingsService.create(body, lang);
+  create(@Body() body: CreateSightingDto, @Req() req: any) {
+    return this.sightingsService.create(req.user.sub, body);
+  }
+
+  @Get('public')
+  listPublic(@Query() query: ListPublicSightingsDto) {
+    return this.sightingsService.listPublic(query);
+  }
+
+  @Post(':id/found')
+  markFound(@Param('id') id: string, @Req() req: any) {
+    return this.sightingsService.markFound(id, req.user.sub);
+  }
+
+  @Post(':id/close')
+  close(@Param('id') id: string, @Req() req: any) {
+    return this.sightingsService.close(id, req.user.sub);
   }
 }
 

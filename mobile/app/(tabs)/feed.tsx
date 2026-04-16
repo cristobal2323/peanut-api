@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -8,10 +8,12 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "../../src/store/auth";
 import { Text } from "react-native-paper";
 import * as Location from "expo-location";
 import { EmptyState } from "../../src/components/EmptyState";
@@ -28,6 +30,10 @@ import {
   mapApiLostReportToCommunityReport,
   PublicStatusParam,
 } from "../../src/api/lostReports";
+import {
+  sightingsApi,
+  mapSightingToCommunityReport,
+} from "../../src/api/sightings";
 import { breedsApi, BreedOption } from "../../src/api/breeds";
 import { colorsApi, ColorOption } from "../../src/api/colors";
 import { queryKeys } from "../../src/lib/queryClient";
@@ -77,6 +83,8 @@ function useDebouncedValue<T>(value: T, delay = 300): T {
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
   const locale = usePreferencesStore((s) => s.locale);
+  const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
   const listRef = useRef<FlatList>(null);
 
   const [activeFilter, setActiveFilter] = useState<FilterValue>("all");
@@ -169,12 +177,42 @@ export default function FeedScreen() {
     getNextPageParam: (last) => last.nextCursor,
   });
 
+  const sightingsFilterKey = useMemo(
+    () => ({
+      maxKm: canFilterByDistance ? effectiveDistance ?? undefined : undefined,
+      lat: canFilterByDistance ? activeCenter?.latitude : undefined,
+      lng: canFilterByDistance ? activeCenter?.longitude : undefined,
+      since: sinceIso,
+    }),
+    [canFilterByDistance, effectiveDistance, activeCenter?.latitude, activeCenter?.longitude, sinceIso]
+  );
+
+  const { data: sightingsPage } = useQuery({
+    queryKey: [...queryKeys.sightingsPublic, sightingsFilterKey],
+    queryFn: () => sightingsApi.listPublic({ ...sightingsFilterKey, take: 50 }),
+  });
+
   const reports = useMemo(() => {
-    const items = data?.pages.flatMap((p) => p.items) ?? [];
-    return items.map((r) =>
+    const lrItems = data?.pages.flatMap((p) => p.items) ?? [];
+    const lr = lrItems.map((r) =>
       mapApiLostReportToCommunityReport(r, locale, activeCenter)
     );
-  }, [data, locale, activeCenter]);
+
+    const allSightings = (sightingsPage?.items ?? [])
+      .filter((s) => {
+        if (activeFilter === "lost") return s.status === "ACTIVE";
+        if (activeFilter === "found") return s.status === "FOUND";
+        return true;
+      })
+      .map((s) => mapSightingToCommunityReport(s, locale, activeCenter));
+
+    if (!allSightings.length) return lr;
+
+    return [...lr, ...allSightings].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [data, sightingsPage, locale, activeCenter, activeFilter]);
 
   const { data: breeds = [] } = useQuery({
     queryKey: queryKeys.breeds(),
@@ -478,19 +516,96 @@ export default function FeedScreen() {
         keyExtractor={(r) => r.id}
         contentContainerStyle={styles.content}
         ListHeaderComponent={renderHeader}
-        renderItem={({ item }) => (
-          <DogCard
-            photo={item.photo}
-            name={item.dogName}
-            breed={item.breed}
-            description={item.description}
-            status={item.reportType === "found" ? "found" : "lost"}
-            distanceKm={item.distanceKm}
-            date={timeAgo(item.createdAt)}
-            location={item.location}
-            style={styles.cardSpacing}
-          />
-        )}
+        renderItem={({ item }) => {
+          const isMine = !!item.reporterId && item.reporterId === user?.id;
+          const isSighting = item.id.startsWith("sighting-");
+          const isActiveSighting = isMine && isSighting && item.reportType === "lost";
+          return (
+            <View style={styles.cardSpacing}>
+              <DogCard
+                photo={item.photo}
+                name={item.dogName}
+                breed={item.breed}
+                description={item.description}
+                status={item.reportType === "found" ? "found" : "lost"}
+                distanceKm={item.distanceKm}
+                date={timeAgo(item.createdAt)}
+                location={item.location}
+              />
+              {isActiveSighting && (
+                <View style={styles.sightingActions}>
+                  <Pressable
+                    style={styles.foundBtn}
+                    onPress={() =>
+                      Alert.alert(
+                        "Marcar como encontrado",
+                        "¿El perro fue reunido con su dueño?",
+                        [
+                          { text: "Cancelar", style: "cancel" },
+                          {
+                            text: "Sí, encontrado",
+                            onPress: async () => {
+                              try {
+                                const realId = item.id.replace("sighting-", "");
+                                await sightingsApi.markFound(realId);
+                                qc.invalidateQueries({
+                                  queryKey: queryKeys.sightingsPublic,
+                                });
+                              } catch {
+                                Alert.alert("Error", "No se pudo actualizar");
+                              }
+                            },
+                          },
+                        ]
+                      )
+                    }
+                  >
+                    <MaterialCommunityIcons
+                      name="check-circle-outline"
+                      size={16}
+                      color={colors.secondary}
+                    />
+                    <Text style={styles.foundBtnText}>Encontrado</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.closeReportBtn}
+                    onPress={() =>
+                      Alert.alert(
+                        "Cerrar reporte",
+                        "El reporte dejará de mostrarse en la comunidad.",
+                        [
+                          { text: "Cancelar", style: "cancel" },
+                          {
+                            text: "Cerrar",
+                            style: "destructive",
+                            onPress: async () => {
+                              try {
+                                const realId = item.id.replace("sighting-", "");
+                                await sightingsApi.close(realId);
+                                qc.invalidateQueries({
+                                  queryKey: queryKeys.sightingsPublic,
+                                });
+                              } catch {
+                                Alert.alert("Error", "No se pudo cerrar");
+                              }
+                            },
+                          },
+                        ]
+                      )
+                    }
+                  >
+                    <MaterialCommunityIcons
+                      name="close-circle-outline"
+                      size={16}
+                      color={colors.error}
+                    />
+                    <Text style={styles.closeReportText}>Cerrar</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          );
+        }}
         onEndReached={() => {
           if (hasNextPage && !isFetchingNextPage) fetchNextPage();
         }}
@@ -799,6 +914,40 @@ const styles = StyleSheet.create({
   },
 
   cardSpacing: { marginBottom: spacing.md },
+  sightingActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  foundBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radii.full,
+    backgroundColor: colors.secondaryContainer,
+  },
+  foundBtnText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: colors.secondary,
+  },
+  closeReportBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radii.full,
+    backgroundColor: colors.errorContainer,
+  },
+  closeReportText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: colors.error,
+  },
 
   centerFeedback: {
     paddingVertical: spacing.xl,

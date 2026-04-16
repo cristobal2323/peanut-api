@@ -26,13 +26,19 @@ import {
 } from "../src/components/LocationPickerField";
 import { LocationSearchField } from "../src/components/LocationSearchField";
 import { colors, fonts, spacing, radii } from "../src/theme";
-import { api } from "../src/api/mockApi";
+import { sightingsApi } from "../src/api/sightings";
+import { uploadDogPhoto } from "../src/lib/supabase";
+import { useAuthStore } from "../src/store/auth";
+import { queryKeys } from "../src/lib/queryClient";
+import { useQueryClient } from "@tanstack/react-query";
 
 const STEPS = ["Foto", "Trufa", "Ubicación", "Publicar"];
 const TOTAL = STEPS.length;
 
 export default function FoundDogScreen() {
   const router = useRouter();
+  const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
 
   const [step, setStep] = useState(1);
   const [photo, setPhoto] = useState<string | null>(null);
@@ -72,31 +78,33 @@ export default function FoundDogScreen() {
       setStep((s) => s + 1);
       return;
     }
-    // Final submit
     setSubmitting(true);
     try {
-      const result = await api.createFoundDogReport({
-        photo: photo ?? undefined,
-        noseScanned,
-        location: {
-          latitude: location?.latitude ?? 0,
-          longitude: location?.longitude ?? 0,
-          address: location?.address ?? "",
-        },
-        comment,
-      });
-      if (result.matchId) {
-        router.replace({
-          pathname: "/scan/match/[id]",
-          params: { id: result.matchId },
-        });
-      } else {
-        Alert.alert(
-          "Reporte publicado",
-          "Tu hallazgo ya está visible para la comunidad."
-        );
-        router.replace("/(tabs)/feed");
+      let imageUrl: string | undefined;
+      if (photo && user?.id) {
+        try {
+          imageUrl = await uploadDogPhoto(photo, user.id);
+        } catch {
+          // Continue without photo if upload fails
+        }
       }
+
+      await sightingsApi.create({
+        latitude: location?.latitude ?? 0,
+        longitude: location?.longitude ?? 0,
+        addressText: location?.address,
+        imageUrl,
+        notes: comment || undefined,
+      });
+
+      qc.invalidateQueries({ queryKey: queryKeys.sightingsPublic });
+      qc.invalidateQueries({ queryKey: queryKeys.lostReportsPublic });
+
+      Alert.alert(
+        "Reporte publicado",
+        "Tu hallazgo ya está visible para la comunidad."
+      );
+      router.replace("/(tabs)/feed");
     } catch (e: any) {
       Alert.alert("Error", e?.message ?? "No pudimos crear el reporte");
     } finally {

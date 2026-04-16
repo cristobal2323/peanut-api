@@ -1,9 +1,6 @@
-import { IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsLatitude, IsLongitude, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateSightingDto {
-  @IsUUID()
-  userId: string;
-
   @IsOptional()
   @IsUUID()
   dogId?: string;
@@ -12,11 +9,15 @@ export class CreateSightingDto {
   @IsUUID()
   lostReportId?: string;
 
-  @IsNumber()
+  @IsLatitude()
   latitude: number;
 
-  @IsNumber()
+  @IsLongitude()
   longitude: number;
+
+  @IsOptional()
+  @IsString()
+  addressText?: string;
 
   @IsOptional()
   @IsString()
