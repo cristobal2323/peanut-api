@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -13,9 +13,14 @@ import { useQuery } from "@tanstack/react-query";
 import MapView, { Marker } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { colors, fonts, spacing, radii } from "../src/theme";
-import { api } from "../src/api/mockApi";
+import {
+  lostReportsApi,
+  mapApiLostReportToMapPin,
+} from "../src/api/lostReports";
 import { queryKeys } from "../src/lib/queryClient";
+import { usePreferencesStore } from "../src/store/preferences";
 import { MapPin } from "../src/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -39,13 +44,41 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const mapRef = useRef<MapView | null>(null);
+  const locale = usePreferencesStore((s) => s.locale);
   const [filter, setFilter] = useState<Filter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [userCoords, setUserCoords] = useState<
+    { latitude: number; longitude: number } | null
+  >(null);
 
-  const { data: pins = [] } = useQuery({
-    queryKey: queryKeys.mapPins,
-    queryFn: api.fetchAllPinsOnMap,
+  useEffect(() => {
+    (async () => {
+      try {
+        const perm = await Location.getForegroundPermissionsAsync();
+        if (perm.status !== "granted") return;
+        const loc = await Location.getLastKnownPositionAsync({});
+        if (loc) {
+          setUserCoords({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          });
+        }
+      } catch {}
+    })();
+  }, []);
+
+  const { data: apiReports = [] } = useQuery({
+    queryKey: queryKeys.lostReports,
+    queryFn: lostReportsApi.getActive,
   });
+
+  const pins = useMemo<MapPin[]>(
+    () =>
+      apiReports
+        .map((r) => mapApiLostReportToMapPin(r, locale, userCoords))
+        .filter((p): p is MapPin => p !== null),
+    [apiReports, locale, userCoords]
+  );
 
   const filtered = useMemo(() => {
     if (filter === "all") return pins;
@@ -186,7 +219,7 @@ export default function MapScreen() {
                   <Pressable
                     style={styles.miniArrow}
                     onPress={() =>
-                      router.push({ pathname: "/report/[id]", params: { id: "lr1" } })
+                      router.push({ pathname: "/report/[id]", params: { id: p.id } })
                     }
                   >
                     <MaterialCommunityIcons name="arrow-right" size={18} color={colors.primary} />

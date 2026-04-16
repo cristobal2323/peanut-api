@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -11,12 +11,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { Text } from "react-native-paper";
+import * as Location from "expo-location";
 import { EmptyState } from "../../src/components/EmptyState";
 import { DogCard } from "../../src/components/DogCard";
 import { spacing, colors, radii, fonts } from "../../src/theme";
-import { api } from "../../src/api/mockApi";
+import {
+  lostReportsApi,
+  mapApiLostReportToCommunityReport,
+} from "../../src/api/lostReports";
 import { queryKeys } from "../../src/lib/queryClient";
-import { CommunityReport } from "../../src/types";
+import { usePreferencesStore } from "../../src/store/preferences";
 
 type FilterValue = "all" | "lost" | "found" | "recent";
 type DateFilter = "today" | "week" | "month";
@@ -46,6 +50,7 @@ function timeAgo(dateStr: string): string {
 
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
+  const locale = usePreferencesStore((s) => s.locale);
   const [activeFilter, setActiveFilter] = useState<FilterValue>("all");
   const [showFilters, setShowFilters] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,16 +58,43 @@ export default function FeedScreen() {
   const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
   const [breedFilter, setBreedFilter] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
+  const [userCoords, setUserCoords] = useState<
+    { latitude: number; longitude: number } | null
+  >(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const perm = await Location.getForegroundPermissionsAsync();
+        if (perm.status !== "granted") return;
+        const loc = await Location.getLastKnownPositionAsync({});
+        if (loc) {
+          setUserCoords({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          });
+        }
+      } catch {}
+    })();
+  }, []);
 
   const activeExtraCount =
     (distanceFilter != null ? 1 : 0) +
     (dateFilter != null ? 1 : 0) +
     (breedFilter != null ? 1 : 0);
 
-  const { data: reports = [], isLoading } = useQuery({
-    queryKey: queryKeys.communityReports,
-    queryFn: api.fetchCommunityReports,
+  const { data: apiReports = [], isLoading } = useQuery({
+    queryKey: queryKeys.lostReports,
+    queryFn: lostReportsApi.getActive,
   });
+
+  const reports = useMemo(
+    () =>
+      apiReports.map((r) =>
+        mapApiLostReportToCommunityReport(r, locale, userCoords)
+      ),
+    [apiReports, locale, userCoords]
+  );
 
   const breeds = useMemo(
     () => [...new Set(reports.map((r) => r.breed))].sort(),

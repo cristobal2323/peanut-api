@@ -17,6 +17,8 @@ import DateTimePicker, {
 import { colors, fonts, spacing, radii } from "../theme";
 import { usePreferencesStore } from "../store/preferences";
 
+type Mode = "date" | "datetime";
+
 type Props = {
   value?: Date;
   onChange: (date: Date | undefined) => void;
@@ -29,6 +31,7 @@ type Props = {
   cancelLabel?: string;
   confirmLabel?: string;
   containerStyle?: ViewStyle;
+  mode?: Mode;
 };
 
 const defaultMin = () => {
@@ -49,6 +52,7 @@ export function DatePickerField({
   cancelLabel = "Cancelar",
   confirmLabel = "Listo",
   containerStyle,
+  mode = "date",
 }: Props) {
   const locale = usePreferencesStore((s) => s.locale);
   const insets = useSafeAreaInsets();
@@ -57,7 +61,9 @@ export function DatePickerField({
 
   const formatter = new Intl.DateTimeFormat(
     locale === "en" ? "en-US" : "es-CL",
-    { dateStyle: "long" }
+    mode === "datetime"
+      ? { dateStyle: "medium", timeStyle: "short" }
+      : { dateStyle: "long" }
   );
 
   const formatted = value ? formatter.format(value) : undefined;
@@ -69,7 +75,20 @@ export function DatePickerField({
       maximumDate,
       minimumDate,
       onChange: (event: DateTimePickerEvent, date?: Date) => {
-        if (event.type === "set" && date) {
+        if (event.type !== "set" || !date) return;
+        if (mode === "datetime") {
+          DateTimePickerAndroid.open({
+            value: date,
+            mode: "time",
+            is24Hour: true,
+            onChange: (e2, d2) => {
+              if (e2.type !== "set" || !d2) return;
+              const combined = new Date(date);
+              combined.setHours(d2.getHours(), d2.getMinutes(), 0, 0);
+              onChange(combined);
+            },
+          });
+        } else {
           onChange(date);
         }
       },
@@ -163,7 +182,7 @@ export function DatePickerField({
 
               <DateTimePicker
                 value={iosDraft ?? new Date()}
-                mode="date"
+                mode={mode}
                 display="spinner"
                 maximumDate={maximumDate}
                 minimumDate={minimumDate}
