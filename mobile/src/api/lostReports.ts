@@ -90,7 +90,13 @@ export const lostReportsApi = {
   getActive: () => http<LostReportApi[]>("/lost-reports/active"),
   listPublic: (params: ListPublicParams = {}) =>
     http<ListPublicResponse>(`/lost-reports/public${buildQuery(params)}`),
-  listMine: () => http<LostReportApi[]>("/lost-reports/mine"),
+  listMine: (params: { skip?: number; take?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.skip != null) qs.set("skip", String(params.skip));
+    if (params.take != null) qs.set("take", String(params.take));
+    const q = qs.toString();
+    return http<ListPublicResponse>(`/lost-reports/mine${q ? `?${q}` : ""}`);
+  },
   getById: (id: string) => http<LostReportApi>(`/lost-reports/${id}`),
   resolve: (id: string) =>
     http<LostReportApi>(`/lost-reports/${id}/resolve`, { method: "POST" }),

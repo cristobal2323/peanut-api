@@ -39,8 +39,16 @@ export class LostReportsController {
   }
 
   @Get('mine')
-  listMine(@Req() req: AuthedRequest) {
-    return this.lostReportsService.listByOwner(req.user.sub);
+  listMine(
+    @Req() req: AuthedRequest,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    return this.lostReportsService.listByOwner(
+      req.user.sub,
+      skip ? parseInt(skip, 10) : 0,
+      take ? parseInt(take, 10) : 20,
+    );
   }
 
   @Get(':id')

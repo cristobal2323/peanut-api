@@ -70,15 +70,19 @@ export class LostReportsService {
     });
   }
 
-  async listByOwner(ownerId: string) {
-    return this.prisma.lostReport.findMany({
+  async listByOwner(ownerId: string, skip = 0, take = 20) {
+    const items = await this.prisma.lostReport.findMany({
       where: { ownerId },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take,
       include: {
         dog: { include: { breed: true, color: true } },
         lastSeenLocation: true,
       },
     });
+    const nextCursor = items.length === take ? skip + take : null;
+    return { items, nextCursor };
   }
 
   async getActive() {

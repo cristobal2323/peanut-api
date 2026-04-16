@@ -54,7 +54,7 @@ export default function DogDetailScreen() {
           onPress: async () => {
             setResolving(true);
             try {
-              const mine = await lostReportsApi.listMine();
+              const { items: mine } = await lostReportsApi.listMine({ take: 100 });
               const active = mine.find(
                 (r) => r.dogId === id && r.status === "ACTIVE"
               );

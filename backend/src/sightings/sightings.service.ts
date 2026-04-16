@@ -141,6 +141,18 @@ export class SightingsService {
     });
   }
 
+  async listMine(userId: string, skip = 0, take = 20) {
+    const items = await this.prisma.sighting.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+      include: SIGHTING_INCLUDE,
+    });
+    const nextCursor = items.length === take ? skip + take : null;
+    return { items, nextCursor };
+  }
+
   async listByLostReport(lostReportId: string) {
     return this.prisma.sighting.findMany({
       where: { lostReportId },

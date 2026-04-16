@@ -82,7 +82,9 @@ export default function ProfileScreen() {
             <View style={styles.statsRow}>
               <Stat value={stats?.dogs ?? dogs.length} label="Perros" />
               <View style={styles.statDivider} />
-              <Stat value={stats?.reports ?? 0} label="Reportes" />
+              <Pressable onPress={() => router.push("/my-reports")}>
+                <Stat value={stats?.reports ?? 0} label="Reportes" />
+              </Pressable>
               <View style={styles.statDivider} />
               <Stat value={stats?.helps ?? 0} label="Ayudas" />
             </View>

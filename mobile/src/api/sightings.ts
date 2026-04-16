@@ -77,6 +77,15 @@ export const sightingsApi = {
     http<ListPublicSightingsResponse>(
       `/sightings/public${buildQuery(params)}`
     ),
+  listMine: (params: { skip?: number; take?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.skip != null) qs.set("skip", String(params.skip));
+    if (params.take != null) qs.set("take", String(params.take));
+    const q = qs.toString();
+    return http<ListPublicSightingsResponse>(
+      `/sightings/mine${q ? `?${q}` : ""}`
+    );
+  },
   markFound: (id: string) =>
     http<SightingApi>(`/sightings/${id}/found`, { method: "POST" }),
   close: (id: string) =>

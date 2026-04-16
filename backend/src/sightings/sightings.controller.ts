@@ -17,6 +17,19 @@ export class SightingsController {
     return this.sightingsService.listPublic(query);
   }
 
+  @Get('mine')
+  listMine(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    return this.sightingsService.listMine(
+      req.user.sub,
+      skip ? parseInt(skip, 10) : 0,
+      take ? parseInt(take, 10) : 20,
+    );
+  }
+
   @Post(':id/found')
   markFound(@Param('id') id: string, @Req() req: any) {
     return this.sightingsService.markFound(id, req.user.sub);
