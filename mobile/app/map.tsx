@@ -14,6 +14,10 @@ import MapView, { Marker, Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import {
+  LocationSearchField,
+  SelectedLocation,
+} from "../src/components/LocationSearchField";
 import { colors, fonts, spacing, radii } from "../src/theme";
 import {
   lostReportsApi,
@@ -68,6 +72,8 @@ export default function MapScreen() {
     { latitude: number; longitude: number } | null
   >(null);
   const [region, setRegion] = useState<Region | null>(null);
+  const [searchedLocation, setSearchedLocation] =
+    useState<SelectedLocation | null>(null);
 
   // Resolve initial region once: user position if granted, otherwise world view.
   useEffect(() => {
@@ -237,6 +243,26 @@ export default function MapScreen() {
             <Text style={styles.headerSub}>{headerSubtitle}</Text>
           </View>
         </View>
+
+        <LocationSearchField
+          value={searchedLocation}
+          onChange={(loc) => {
+            setSearchedLocation(loc);
+            if (loc) {
+              mapRef.current?.animateToRegion(
+                {
+                  latitude: loc.latitude,
+                  longitude: loc.longitude,
+                  latitudeDelta: 0.05,
+                  longitudeDelta: 0.05,
+                },
+                600
+              );
+            }
+          }}
+          placeholder="Buscar dirección..."
+          searchPlaceholder="Ej: Santiago, Madrid..."
+        />
 
         {/* Filter chips */}
         <ScrollView
