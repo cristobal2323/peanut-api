@@ -16,6 +16,12 @@ import { Text } from "react-native-paper";
 import * as Location from "expo-location";
 import { EmptyState } from "../../src/components/EmptyState";
 import { DogCard } from "../../src/components/DogCard";
+import { MultiSelectField } from "../../src/components/MultiSelectField";
+import {
+  LocationSearchField,
+  SelectedLocation,
+} from "../../src/components/LocationSearchField";
+import type { SelectOption } from "../../src/components/SearchableSelect";
 import { spacing, colors, radii, fonts } from "../../src/theme";
 import {
   lostReportsApi,
@@ -78,9 +84,12 @@ export default function FeedScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [distanceFilter, setDistanceFilter] = useState<number | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
-  const [breedFilter, setBreedFilter] = useState<string | null>(null);
-  const [colorFilter, setColorFilter] = useState<string | null>(null);
+  const [breedFilters, setBreedFilters] = useState<string[]>([]);
+  const [colorFilters, setColorFilters] = useState<string[]>([]);
   const [showSheet, setShowSheet] = useState(false);
+  const [searchLocation, setSearchLocation] = useState<SelectedLocation | null>(
+    null
+  );
   const [userCoords, setUserCoords] = useState<
     { latitude: number; longitude: number } | null
   >(null);
@@ -108,35 +117,39 @@ export default function FeedScreen() {
     return new Date(Date.now() - DATE_CUTOFFS[dateFilter]).toISOString();
   }, [dateFilter]);
 
-  const canFilterByDistance = !!userCoords && distanceFilter != null;
+  const activeCenter = searchLocation ?? userCoords;
+  const effectiveDistance = distanceFilter ?? (searchLocation ? 50 : null);
+  const canFilterByDistance = !!activeCenter && effectiveDistance != null;
 
   const activeExtraCount =
     (distanceFilter != null ? 1 : 0) +
     (dateFilter != null ? 1 : 0) +
-    (breedFilter != null ? 1 : 0) +
-    (colorFilter != null ? 1 : 0);
+    (breedFilters.length > 0 ? 1 : 0) +
+    (colorFilters.length > 0 ? 1 : 0) +
+    (searchLocation ? 1 : 0);
 
   const filterKey = useMemo(
     () => ({
       status: statusParam(activeFilter),
       search: debouncedSearch.trim() || undefined,
-      maxKm: canFilterByDistance ? distanceFilter ?? undefined : undefined,
-      lat: canFilterByDistance ? userCoords?.latitude : undefined,
-      lng: canFilterByDistance ? userCoords?.longitude : undefined,
+      maxKm: canFilterByDistance ? effectiveDistance ?? undefined : undefined,
+      lat: canFilterByDistance ? activeCenter?.latitude : undefined,
+      lng: canFilterByDistance ? activeCenter?.longitude : undefined,
       since: sinceIso,
-      breedId: breedFilter ?? undefined,
-      colorId: colorFilter ?? undefined,
+      breedIds: breedFilters.length ? breedFilters : undefined,
+      colorIds: colorFilters.length ? colorFilters : undefined,
     }),
     [
       activeFilter,
       debouncedSearch,
       distanceFilter,
-      userCoords?.latitude,
-      userCoords?.longitude,
+      activeCenter?.latitude,
+      activeCenter?.longitude,
       sinceIso,
-      breedFilter,
-      colorFilter,
+      breedFilters,
+      colorFilters,
       canFilterByDistance,
+      searchLocation,
     ]
   );
 
@@ -159,9 +172,9 @@ export default function FeedScreen() {
   const reports = useMemo(() => {
     const items = data?.pages.flatMap((p) => p.items) ?? [];
     return items.map((r) =>
-      mapApiLostReportToCommunityReport(r, locale, userCoords)
+      mapApiLostReportToCommunityReport(r, locale, activeCenter)
     );
-  }, [data, locale, userCoords]);
+  }, [data, locale, activeCenter]);
 
   const { data: breeds = [] } = useQuery({
     queryKey: queryKeys.breeds(),
@@ -178,9 +191,25 @@ export default function FeedScreen() {
   const clearAllFilters = () => {
     setDistanceFilter(null);
     setDateFilter(null);
-    setBreedFilter(null);
-    setColorFilter(null);
+    setBreedFilters([]);
+    setColorFilters([]);
+    setSearchLocation(null);
   };
+
+  const breedOptions = useMemo<SelectOption[]>(
+    () => breeds.map((b) => ({ id: b.id, label: b.name })),
+    [breeds]
+  );
+
+  const colorOptionItems = useMemo<SelectOption[]>(
+    () =>
+      colorOptions.map((c) => ({
+        id: c.id,
+        label: c.name,
+        hint: c.hex ?? undefined,
+      })),
+    [colorOptions]
+  );
 
   const renderHeader = () => (
     <View style={styles.listHeader}>
@@ -198,7 +227,7 @@ export default function FeedScreen() {
           </Text>
           <Text style={styles.bannerSubtitle}>
             {canFilterByDistance
-              ? `Dentro de ${distanceFilter} km de ti`
+              ? `Dentro de ${effectiveDistance} km de ${searchLocation ? searchLocation.name.split(",")[0].trim() : "ti"}`
               : "Comunidad completa"}
           </Text>
         </View>
@@ -308,17 +337,28 @@ export default function FeedScreen() {
             <Text style={styles.sheetTitle}>Filtros</Text>
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
+              {/* Location search */}
+              <View style={{ marginTop: spacing.xs }}>
+                <LocationSearchField
+                  label="Ubicación"
+                  value={searchLocation}
+                  onChange={setSearchLocation}
+                  placeholder="Centrar búsqueda en una dirección"
+                  searchPlaceholder="Ej: Santiago, Madrid..."
+                />
+              </View>
+
               {/* Distance */}
               <Text style={styles.sheetSectionTitle}>Distancia</Text>
-              {!userCoords && (
+              {!activeCenter && (
                 <Text style={styles.sheetHint}>
-                  Activa la ubicación para usar este filtro
+                  Activa la ubicación o busca una dirección para usar este filtro
                 </Text>
               )}
               <View style={styles.sheetChipsWrap}>
                 {([1, 5, 10, 25] as const).map((km) => {
                   const active = distanceFilter === km;
-                  const disabled = !userCoords;
+                  const disabled = !activeCenter;
                   return (
                     <Pressable
                       key={`d-${km}`}
@@ -384,59 +424,34 @@ export default function FeedScreen() {
               </View>
 
               {/* Breed */}
-              <Text style={styles.sheetSectionTitle}>Raza</Text>
-              <View style={styles.sheetChipsWrap}>
-                {breeds.map((breed: BreedOption) => {
-                  const active = breedFilter === breed.id;
-                  return (
-                    <Pressable
-                      key={`b-${breed.id}`}
-                      onPress={() => setBreedFilter(active ? null : breed.id)}
-                      style={[styles.filterChip, active && styles.filterChipActive]}
-                    >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          active && styles.filterChipTextActive,
-                        ]}
-                      >
-                        {breed.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+              <View style={{ marginTop: spacing.md }}>
+                <MultiSelectField
+                  label="Raza"
+                  placeholder="Todas las razas"
+                  searchPlaceholder="Buscar raza..."
+                  values={breedFilters}
+                  options={breedOptions}
+                  onChange={setBreedFilters}
+                />
               </View>
 
               {/* Color */}
-              <Text style={styles.sheetSectionTitle}>Color</Text>
-              <View style={styles.sheetChipsWrap}>
-                {colorOptions.map((color: ColorOption) => {
-                  const active = colorFilter === color.id;
-                  return (
-                    <Pressable
-                      key={`c-${color.id}`}
-                      onPress={() => setColorFilter(active ? null : color.id)}
-                      style={[styles.filterChip, active && styles.filterChipActive]}
-                    >
-                      {color.hex && (
-                        <View
-                          style={[
-                            styles.colorDot,
-                            { backgroundColor: color.hex },
-                          ]}
-                        />
-                      )}
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          active && styles.filterChipTextActive,
-                        ]}
-                      >
-                        {color.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+              <View style={{ marginTop: spacing.md }}>
+                <MultiSelectField
+                  label="Color"
+                  placeholder="Todos los colores"
+                  searchPlaceholder="Buscar color..."
+                  values={colorFilters}
+                  options={colorOptionItems}
+                  onChange={setColorFilters}
+                  renderOptionLeading={(opt) =>
+                    opt.hint ? (
+                      <View
+                        style={[styles.colorDot, { backgroundColor: opt.hint }]}
+                      />
+                    ) : null
+                  }
+                />
               </View>
             </ScrollView>
 

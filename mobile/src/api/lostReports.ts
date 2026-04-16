@@ -48,6 +48,8 @@ export type ListPublicParams = {
   status?: PublicStatusParam;
   breedId?: string;
   colorId?: string;
+  breedIds?: string[];
+  colorIds?: string[];
   maxKm?: number;
   lat?: number;
   lng?: number;
@@ -69,6 +71,11 @@ function buildQuery(params: ListPublicParams): string {
   (Object.keys(params) as (keyof ListPublicParams)[]).forEach((k) => {
     const v = params[k];
     if (v === undefined || v === null || v === "") return;
+    if (Array.isArray(v)) {
+      if (v.length === 0) return;
+      parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v.join(","))}`);
+      return;
+    }
     parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   });
   return parts.length ? `?${parts.join("&")}` : "";

@@ -1,5 +1,7 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsInt,
   IsOptional,
   IsString,
@@ -11,6 +13,14 @@ import {
   IsLongitude,
   IsISO8601,
 } from 'class-validator';
+
+const splitCsv = ({ value }: { value: unknown }) =>
+  typeof value === 'string'
+    ? value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : value;
 
 export enum PublicStatusFilter {
   ACTIVE = 'active',
@@ -43,6 +53,20 @@ export class ListPublicLostReportsDto {
   @IsOptional()
   @IsUUID()
   colorId?: string;
+
+  @IsOptional()
+  @Transform(splitCsv)
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsUUID('4', { each: true })
+  breedIds?: string[];
+
+  @IsOptional()
+  @Transform(splitCsv)
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsUUID('4', { each: true })
+  colorIds?: string[];
 
   @IsOptional()
   @Type(() => Number)

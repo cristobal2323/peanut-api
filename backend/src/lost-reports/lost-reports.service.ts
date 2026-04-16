@@ -105,8 +105,16 @@ export class LostReportsService {
           : [LostReportStatus.ACTIVE, LostReportStatus.RESOLVED];
 
     const dogFilter: Prisma.DogWhereInput = {};
-    if (filter.breedId) dogFilter.breedId = filter.breedId;
-    if (filter.colorId) dogFilter.colorId = filter.colorId;
+    if (filter.breedIds && filter.breedIds.length) {
+      dogFilter.breedId = { in: filter.breedIds };
+    } else if (filter.breedId) {
+      dogFilter.breedId = filter.breedId;
+    }
+    if (filter.colorIds && filter.colorIds.length) {
+      dogFilter.colorId = { in: filter.colorIds };
+    } else if (filter.colorId) {
+      dogFilter.colorId = filter.colorId;
+    }
 
     let locationFilter: Prisma.LocationWhereInput | undefined;
     let requireLocation = false;
