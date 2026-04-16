@@ -51,6 +51,10 @@ export type ListPublicParams = {
   maxKm?: number;
   lat?: number;
   lng?: number;
+  minLat?: number;
+  maxLat?: number;
+  minLng?: number;
+  maxLng?: number;
   since?: string;
   search?: string;
 };

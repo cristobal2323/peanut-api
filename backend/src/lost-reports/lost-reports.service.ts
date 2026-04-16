@@ -110,7 +110,30 @@ export class LostReportsService {
 
     let locationFilter: Prisma.LocationWhereInput | undefined;
     let requireLocation = false;
+
     if (
+      filter.minLat !== undefined &&
+      filter.maxLat !== undefined &&
+      filter.minLng !== undefined &&
+      filter.maxLng !== undefined
+    ) {
+      const latRange = { gte: filter.minLat, lte: filter.maxLat };
+      if (filter.minLng <= filter.maxLng) {
+        locationFilter = {
+          latitude: latRange,
+          longitude: { gte: filter.minLng, lte: filter.maxLng },
+        };
+      } else {
+        locationFilter = {
+          latitude: latRange,
+          OR: [
+            { longitude: { gte: filter.minLng, lte: 180 } },
+            { longitude: { gte: -180, lte: filter.maxLng } },
+          ],
+        };
+      }
+      requireLocation = true;
+    } else if (
       filter.maxKm !== undefined &&
       filter.lat !== undefined &&
       filter.lng !== undefined

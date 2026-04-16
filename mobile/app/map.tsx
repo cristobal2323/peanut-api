@@ -5,12 +5,12 @@ import {
   Pressable,
   ScrollView,
   Image,
-  Dimensions,
 } from "react-native";
 import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import MapView, { Marker } from "react-native-maps";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import ClusteredMapView from "react-native-map-clustering";
+import MapView, { Marker, Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -18,12 +18,11 @@ import { colors, fonts, spacing, radii } from "../src/theme";
 import {
   lostReportsApi,
   mapApiLostReportToMapPin,
+  haversineKm,
+  PublicStatusParam,
 } from "../src/api/lostReports";
-import { queryKeys } from "../src/lib/queryClient";
 import { usePreferencesStore } from "../src/store/preferences";
 import { MapPin } from "../src/types";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type Filter = "all" | "lost" | "found";
 
@@ -33,12 +32,30 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "found", label: "Encontrados" },
 ];
 
-const DEFAULT_REGION = {
-  latitude: -33.4378,
-  longitude: -70.6505,
-  latitudeDelta: 0.08,
-  longitudeDelta: 0.08,
+const WORLD_REGION: Region = {
+  latitude: 20,
+  longitude: 0,
+  latitudeDelta: 80,
+  longitudeDelta: 80,
 };
+
+const MAX_LATITUDE_DELTA = 2;
+const MAP_PAGE_SIZE = 200;
+const CAROUSEL_MAX = 10;
+
+const normLng = (x: number) => ((x + 540) % 360) - 180;
+
+const statusParam = (f: Filter): PublicStatusParam =>
+  f === "lost" ? "active" : f === "found" ? "resolved" : "any";
+
+function useDebouncedValue<T>(value: T, delay = 300): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
@@ -50,29 +67,78 @@ export default function MapScreen() {
   const [userCoords, setUserCoords] = useState<
     { latitude: number; longitude: number } | null
   >(null);
+  const [region, setRegion] = useState<Region | null>(null);
 
+  // Resolve initial region once: user position if granted, otherwise world view.
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const perm = await Location.getForegroundPermissionsAsync();
-        if (perm.status !== "granted") return;
-        const loc = await Location.getLastKnownPositionAsync({});
-        if (loc) {
-          setUserCoords({
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-          });
+        if (perm.status === "granted") {
+          const loc = await Location.getLastKnownPositionAsync({});
+          if (!cancelled && loc) {
+            const next = {
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            };
+            setUserCoords(next);
+            setRegion({
+              ...next,
+              latitudeDelta: 0.08,
+              longitudeDelta: 0.08,
+            });
+            return;
+          }
         }
       } catch {}
+      if (!cancelled) setRegion(WORLD_REGION);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  const debouncedRegion = useDebouncedValue(region, 300);
+
+  const zoomTooWide =
+    !debouncedRegion || debouncedRegion.latitudeDelta > MAX_LATITUDE_DELTA;
+
+  const bbox = useMemo(() => {
+    if (!debouncedRegion || zoomTooWide) return null;
+    const halfLat = debouncedRegion.latitudeDelta / 2;
+    const halfLng = debouncedRegion.longitudeDelta / 2;
+    const minLat = Math.max(-90, debouncedRegion.latitude - halfLat);
+    const maxLat = Math.min(90, debouncedRegion.latitude + halfLat);
+    const minLng = normLng(debouncedRegion.longitude - halfLng);
+    const maxLng = normLng(debouncedRegion.longitude + halfLng);
+    return { minLat, maxLat, minLng, maxLng };
+  }, [debouncedRegion, zoomTooWide]);
+
+  const statusParamValue = statusParam(filter);
+
   const { data: page } = useQuery({
-    queryKey: queryKeys.lostReportsPublic,
-    queryFn: () => lostReportsApi.listPublic({ take: 500 }),
+    enabled: !!bbox,
+    queryKey: [
+      "lostReportsPublic",
+      "map",
+      bbox?.minLat,
+      bbox?.maxLat,
+      bbox?.minLng,
+      bbox?.maxLng,
+      statusParamValue,
+    ],
+    queryFn: () =>
+      lostReportsApi.listPublic({
+        ...(bbox ?? {}),
+        status: statusParamValue,
+        take: MAP_PAGE_SIZE,
+      }),
+    placeholderData: keepPreviousData,
   });
 
   const apiReports = page?.items ?? [];
+  const exceededCap = page?.nextCursor != null;
 
   const pins = useMemo<MapPin[]>(
     () =>
@@ -82,10 +148,18 @@ export default function MapScreen() {
     [apiReports, locale, userCoords]
   );
 
-  const filtered = useMemo(() => {
-    if (filter === "all") return pins;
-    return pins.filter((p) => p.status === filter);
-  }, [pins, filter]);
+  const carouselPins = useMemo(() => {
+    if (!region) return [];
+    const center = { latitude: region.latitude, longitude: region.longitude };
+    return [...pins]
+      .map((p) => ({
+        pin: p,
+        d: haversineKm(center, { latitude: p.lat, longitude: p.lng }),
+      }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, CAROUSEL_MAX)
+      .map((x) => x.pin);
+  }, [pins, region]);
 
   const selectPin = (pin: MapPin) => {
     setSelectedId(pin.id);
@@ -103,36 +177,50 @@ export default function MapScreen() {
   const colorFor = (status: "lost" | "found") =>
     status === "lost" ? colors.error : colors.secondary;
 
+  const headerSubtitle = zoomTooWide
+    ? "Acerca el mapa para ver reportes"
+    : exceededCap
+      ? "Hay más reportes — acerca o filtra"
+      : `${pins.length} en esta zona`;
+
   return (
     <View style={styles.screen}>
-      <MapView
-        ref={mapRef}
-        style={StyleSheet.absoluteFill}
-        initialRegion={DEFAULT_REGION}
-        showsUserLocation
-      >
-        {filtered.map((p) => (
-          <Marker
-            key={p.id}
-            coordinate={{ latitude: p.lat, longitude: p.lng }}
-            onPress={() => selectPin(p)}
-          >
-            <View
-              style={[
-                styles.markerWrap,
-                { borderColor: colorFor(p.status) },
-                selectedId === p.id && styles.markerSelected,
-              ]}
+      {region && (
+        <ClusteredMapView
+          ref={mapRef}
+          style={StyleSheet.absoluteFill}
+          initialRegion={region}
+          showsUserLocation
+          onRegionChangeComplete={(r: Region) => setRegion(r)}
+          clusterColor={colors.primary}
+          clusterTextColor="#fff"
+          radius={40}
+          minPoints={2}
+        >
+          {pins.map((p) => (
+            <Marker
+              key={p.id}
+              coordinate={{ latitude: p.lat, longitude: p.lng }}
+              onPress={() => selectPin(p)}
+              tracksViewChanges={false}
             >
-              {p.photo ? (
-                <Image source={{ uri: p.photo }} style={styles.markerImg} />
-              ) : (
-                <MaterialCommunityIcons name="dog" size={20} color={colorFor(p.status)} />
-              )}
-            </View>
-          </Marker>
-        ))}
-      </MapView>
+              <View
+                style={[
+                  styles.markerWrap,
+                  { borderColor: colorFor(p.status) },
+                  selectedId === p.id && styles.markerSelected,
+                ]}
+              >
+                {p.photo ? (
+                  <Image source={{ uri: p.photo }} style={styles.markerImg} />
+                ) : (
+                  <MaterialCommunityIcons name="dog" size={20} color={colorFor(p.status)} />
+                )}
+              </View>
+            </Marker>
+          ))}
+        </ClusteredMapView>
+      )}
 
       {/* Floating header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
@@ -146,7 +234,7 @@ export default function MapScreen() {
           </Pressable>
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Mapa de reportes</Text>
-            <Text style={styles.headerSub}>{filtered.length} en tu zona</Text>
+            <Text style={styles.headerSub}>{headerSubtitle}</Text>
           </View>
         </View>
 
@@ -174,14 +262,14 @@ export default function MapScreen() {
       </View>
 
       {/* Bottom carousel */}
-      {filtered.length > 0 && (
+      {carouselPins.length > 0 && !zoomTooWide && (
         <View style={[styles.carouselWrap, { paddingBottom: insets.bottom + spacing.lg }]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.carouselContent}
           >
-            {filtered.map((p) => {
+            {carouselPins.map((p) => {
               const isSelected = selectedId === p.id;
               return (
                 <Pressable

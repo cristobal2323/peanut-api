@@ -60,6 +60,26 @@ export class ListPublicLostReportsDto {
   lng?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsLatitude()
+  minLat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsLatitude()
+  maxLat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsLongitude()
+  minLng?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsLongitude()
+  maxLng?: number;
+
+  @IsOptional()
   @IsISO8601({ strict: true })
   since?: string;
 

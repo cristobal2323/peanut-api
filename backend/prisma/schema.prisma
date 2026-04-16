@@ -256,6 +256,8 @@ model Location {
   lostReports    LostReport[]
   sightings      Sighting[]
   externalPosts  ExternalPost[]
+
+  @@index([latitude, longitude])
 }
 
 model LostReport {
