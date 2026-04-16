@@ -21,6 +21,7 @@ import {
   LocationPickerField,
   LocationValue,
 } from "../../src/components/LocationPickerField";
+import { LocationSearchField } from "../../src/components/LocationSearchField";
 import { colors, fonts, spacing, radii } from "../../src/theme";
 import { dogsApi } from "../../src/api/dogs";
 import { lostReportsApi, CreateLostReportPayload } from "../../src/api/lostReports";
@@ -108,6 +109,39 @@ export default function ReportLostScreen() {
           placeholder="Selecciona en el mapa"
           value={location}
           onChange={setLocation}
+        />
+
+        <View style={styles.orDivider}>
+          <View style={styles.orLine} />
+          <Text style={styles.orText}>o</Text>
+          <View style={styles.orLine} />
+        </View>
+
+        <LocationSearchField
+          label="Buscar dirección"
+          value={
+            location
+              ? {
+                  name:
+                    location.address ??
+                    `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                }
+              : null
+          }
+          onChange={(loc) => {
+            if (loc) {
+              setLocation({
+                latitude: loc.latitude,
+                longitude: loc.longitude,
+                address: loc.name,
+              });
+            } else {
+              setLocation(undefined);
+            }
+          }}
+          placeholder="Ej: Parque O'Higgins, Santiago"
         />
 
         <DatePickerField
@@ -208,5 +242,21 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 14,
     color: colors.onSurface,
+  },
+  orDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    marginVertical: spacing.xs,
+  },
+  orLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.outlineVariant,
+  },
+  orText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: colors.textMuted,
   },
 });

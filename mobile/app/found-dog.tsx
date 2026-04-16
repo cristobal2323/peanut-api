@@ -14,13 +14,17 @@ import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
 import Animated, { FadeInRight, FadeOutLeft } from "react-native-reanimated";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { StepProgress } from "../src/components/StepProgress";
 import { CameraGuideOverlay } from "../src/components/CameraGuideOverlay";
 import { FormField } from "../src/components/FormField";
 import { InfoTip } from "../src/components/InfoTip";
+import {
+  LocationPickerField,
+  LocationValue,
+} from "../src/components/LocationPickerField";
+import { LocationSearchField } from "../src/components/LocationSearchField";
 import { colors, fonts, spacing, radii } from "../src/theme";
 import { api } from "../src/api/mockApi";
 
@@ -34,8 +38,7 @@ export default function FoundDogScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [noseScanned, setNoseScanned] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [address, setAddress] = useState("");
-  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [location, setLocation] = useState<LocationValue | undefined>(undefined);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,30 +59,10 @@ export default function FoundDogScreen() {
     }, 1500);
   };
 
-  const useMyLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Sin permiso", "Activa la ubicación.");
-      return;
-    }
-    const loc = await Location.getCurrentPositionAsync({});
-    const { latitude, longitude } = loc.coords;
-    setCoords({ latitude, longitude });
-    try {
-      const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-      if (places.length > 0) {
-        const p = places[0];
-        setAddress(`${p.street ?? ""} ${p.city ?? ""}`.trim() || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-      }
-    } catch {
-      setAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-    }
-  };
-
   const canContinue = (() => {
     if (step === 1) return !!photo;
     if (step === 2) return true; // Step 2 is skippable
-    if (step === 3) return !!address.trim();
+    if (step === 3) return !!location;
     if (step === 4) return true;
     return false;
   })();
@@ -96,9 +79,9 @@ export default function FoundDogScreen() {
         photo: photo ?? undefined,
         noseScanned,
         location: {
-          latitude: coords?.latitude ?? 0,
-          longitude: coords?.longitude ?? 0,
-          address,
+          latitude: location?.latitude ?? 0,
+          longitude: location?.longitude ?? 0,
+          address: location?.address ?? "",
         },
         comment,
       });
@@ -240,18 +223,45 @@ export default function FoundDogScreen() {
               Esta información ayuda a notificar a la familia más cercana
             </Text>
 
-            <FormField
-              label="Ubicación"
-              required
-              icon="map-marker"
-              placeholder="Ej. Parque Forestal"
-              value={address}
-              onChangeText={setAddress}
+            <LocationPickerField
+              label="Seleccionar en el mapa"
+              placeholder="Toca para abrir el mapa"
+              value={location}
+              onChange={setLocation}
             />
-            <Pressable style={styles.locateBtn} onPress={useMyLocation}>
-              <MaterialCommunityIcons name="crosshairs-gps" size={16} color={colors.secondary} />
-              <Text style={styles.locateText}>Usar mi ubicación actual</Text>
-            </Pressable>
+
+            <View style={styles.orDivider}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>o</Text>
+              <View style={styles.orLine} />
+            </View>
+
+            <LocationSearchField
+              label="Buscar dirección"
+              value={
+                location
+                  ? {
+                      name:
+                        location.address ??
+                        `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                    }
+                  : null
+              }
+              onChange={(loc) => {
+                if (loc) {
+                  setLocation({
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    address: loc.name,
+                  });
+                } else {
+                  setLocation(undefined);
+                }
+              }}
+              placeholder="Ej: Parque Forestal, Santiago"
+            />
 
             <FormField
               label="Comentario (opcional)"
@@ -291,7 +301,7 @@ export default function FoundDogScreen() {
                 <SummaryItem
                   icon="map-marker"
                   label="Ubicación"
-                  ok={!!address}
+                  ok={!!location}
                 />
               </View>
             </View>
@@ -536,21 +546,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textMuted,
   },
-  locateBtn: {
+  orDivider: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs + 2,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: colors.secondaryContainer,
-    borderRadius: radii.full,
-    alignSelf: "flex-start",
-    marginTop: -spacing.sm,
+    gap: spacing.md,
+    marginVertical: spacing.xs,
   },
-  locateText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: colors.secondary,
+  orLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.outlineVariant,
+  },
+  orText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: colors.textMuted,
   },
 
   // Summary
