@@ -19,8 +19,10 @@ import { SectionCard } from "../../src/components/SectionCard";
 import { IconCircle } from "../../src/components/IconCircle";
 import { spacing, colors, fonts, radii } from "../../src/theme";
 import { dogsApi, mapApiDogToDog } from "../../src/api/dogs";
+import { lostReportsApi } from "../../src/api/lostReports";
 import { queryKeys } from "../../src/lib/queryClient";
 import { usePreferencesStore } from "../../src/store/preferences";
+import { useTranslation } from "../../src/i18n";
 
 const HERO_HEIGHT = 320;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -30,7 +32,9 @@ export default function DogDetailScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const locale = usePreferencesStore((s) => s.locale);
+  const { t } = useTranslation();
   const [deleting, setDeleting] = useState(false);
+  const [resolving, setResolving] = useState(false);
 
   const { data: apiDog, isLoading } = useQuery({
     queryKey: queryKeys.dog(id),
@@ -38,6 +42,42 @@ export default function DogDetailScreen() {
   });
 
   const dog = apiDog ? mapApiDogToDog(apiDog, locale) : undefined;
+
+  const confirmResolve = () => {
+    Alert.alert(
+      t("reportLost.markAsFoundConfirmTitle"),
+      t("reportLost.markAsFoundConfirmBody"),
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: t("reportLost.markAsFoundConfirmCta"),
+          onPress: async () => {
+            setResolving(true);
+            try {
+              const mine = await lostReportsApi.listMine();
+              const active = mine.find(
+                (r) => r.dogId === id && r.status === "ACTIVE"
+              );
+              if (!active) {
+                Alert.alert("Error", t("reportLost.markAsFoundErrorNoReport"));
+                return;
+              }
+              await lostReportsApi.resolve(active.id);
+              qc.invalidateQueries({ queryKey: queryKeys.dogs });
+              qc.invalidateQueries({ queryKey: queryKeys.dog(id) });
+              qc.invalidateQueries({ queryKey: queryKeys.lostReports });
+              qc.invalidateQueries({ queryKey: queryKeys.lostReportsMine });
+              Alert.alert("Listo", t("reportLost.markAsFoundSuccess"));
+            } catch (e: any) {
+              Alert.alert("Error", e?.message ?? "No pudimos actualizar la alerta");
+            } finally {
+              setResolving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const confirmDelete = () => {
     Alert.alert(
@@ -136,7 +176,24 @@ export default function DogDetailScreen() {
                 <Text style={styles.btnPrimaryText}>Actualizar trufa</Text>
               </Pressable>
             </Link>
-            {!isLost && (
+            {isLost ? (
+              <Pressable
+                style={[styles.btnSuccess, resolving && styles.btnDisabled]}
+                onPress={confirmResolve}
+                disabled={resolving}
+              >
+                <MaterialCommunityIcons
+                  name="check-circle-outline"
+                  size={18}
+                  color="#ffffff"
+                />
+                <Text style={styles.btnSuccessText}>
+                  {resolving
+                    ? t("reportLost.markAsFoundUpdating")
+                    : t("reportLost.markAsFound")}
+                </Text>
+              </Pressable>
+            ) : (
               <Link href={{ pathname: "/report-lost/[dogId]", params: { dogId: dog.id } }} asChild>
                 <Pressable style={styles.btnDanger}>
                   <MaterialCommunityIcons name="alert-circle-outline" size={18} color={colors.error} />
@@ -458,6 +515,23 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 15,
     color: colors.error,
+  },
+  btnSuccess: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.tertiary,
+    paddingVertical: 14,
+    borderRadius: radii.md,
+  },
+  btnSuccessText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 15,
+    color: "#ffffff",
+  },
+  btnDisabled: {
+    opacity: 0.5,
   },
 
   // Body sections

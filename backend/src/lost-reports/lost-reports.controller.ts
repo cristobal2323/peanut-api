@@ -1,14 +1,29 @@
-import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  Req,
+} from '@nestjs/common';
+import { Request } from 'express';
 import { LostReportsService } from './lost-reports.service';
 import { CreateLostReportDto } from './dto/create-lost-report.dto';
+
+type AuthedRequest = Request & { user: { sub: string; email?: string; role?: string } };
 
 @Controller('lost-reports')
 export class LostReportsController {
   constructor(private readonly lostReportsService: LostReportsService) {}
 
   @Post()
-  create(@Body() body: CreateLostReportDto, @Headers('accept-language') lang?: string) {
-    return this.lostReportsService.create(body, lang);
+  create(
+    @Body() body: CreateLostReportDto,
+    @Req() req: AuthedRequest,
+    @Headers('accept-language') lang?: string,
+  ) {
+    return this.lostReportsService.create(req.user.sub, body, lang);
   }
 
   @Get('active')
@@ -16,8 +31,31 @@ export class LostReportsController {
     return this.lostReportsService.getActive();
   }
 
+  @Get('mine')
+  listMine(@Req() req: AuthedRequest) {
+    return this.lostReportsService.listByOwner(req.user.sub);
+  }
+
   @Get(':id')
   getById(@Param('id') id: string, @Headers('accept-language') lang?: string) {
     return this.lostReportsService.getById(id, lang);
+  }
+
+  @Post(':id/resolve')
+  resolve(
+    @Param('id') id: string,
+    @Req() req: AuthedRequest,
+    @Headers('accept-language') lang?: string,
+  ) {
+    return this.lostReportsService.resolve(id, req.user.sub, lang);
+  }
+
+  @Post(':id/cancel')
+  cancel(
+    @Param('id') id: string,
+    @Req() req: AuthedRequest,
+    @Headers('accept-language') lang?: string,
+  ) {
+    return this.lostReportsService.cancel(id, req.user.sub, lang);
   }
 }

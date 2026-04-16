@@ -32,6 +32,7 @@ const RootLayoutNav = () => (
     <Stack.Screen name="dog/new" options={{ presentation: "modal" }} />
     <Stack.Screen name="dog/edit/[id]" />
     <Stack.Screen name="scan" />
+    <Stack.Screen name="report-lost" options={{ presentation: "modal" }} />
     <Stack.Screen name="report-lost/[dogId]" />
     <Stack.Screen name="report/[id]" />
     <Stack.Screen name="found-dog" />

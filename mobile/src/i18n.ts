@@ -127,6 +127,31 @@ type Translations = Record<
         emptyCta: string;
       };
     };
+    reportLost: {
+      pickerTitle: string;
+      pickerSubtitle: string;
+      myDogsHeader: string;
+      safeBadge: string;
+      lostBadge: string;
+      alreadyReported: string;
+      dividerOr: string;
+      otherDogTitle: string;
+      otherDogSubtitle: string;
+      emptyDogsTitle: string;
+      emptyDogsSubtitle: string;
+      close: string;
+      form: {
+        rewardLabel: string;
+        rewardPlaceholder: string;
+      };
+      markAsFound: string;
+      markAsFoundConfirmTitle: string;
+      markAsFoundConfirmBody: string;
+      markAsFoundConfirmCta: string;
+      markAsFoundSuccess: string;
+      markAsFoundErrorNoReport: string;
+      markAsFoundUpdating: string;
+    };
   }
 >;
 
@@ -255,6 +280,31 @@ const translations: Translations = {
         emptySubtitle: "Protect them with their unique digital fingerprint: the nose",
         emptyCta: "Start registration"
       }
+    },
+    reportLost: {
+      pickerTitle: "Activate lost alert",
+      pickerSubtitle: "Which dog would you like to report?",
+      myDogsHeader: "My dogs",
+      safeBadge: "Safe",
+      lostBadge: "Lost",
+      alreadyReported: "Already reported",
+      dividerOr: "or",
+      otherDogTitle: "It's not my dog",
+      otherDogSubtitle: "I found a lost dog",
+      emptyDogsTitle: "You don't have any registered dogs",
+      emptyDogsSubtitle: "Register a dog or help find someone else's",
+      close: "Close",
+      form: {
+        rewardLabel: "Reward (optional)",
+        rewardPlaceholder: "E.g. 50000"
+      },
+      markAsFound: "Mark as found",
+      markAsFoundConfirmTitle: "Mark as found",
+      markAsFoundConfirmBody: "Will close the active alert. Continue?",
+      markAsFoundConfirmCta: "Yes, I found them",
+      markAsFoundSuccess: "We updated your alert",
+      markAsFoundErrorNoReport: "We couldn't find the active report",
+      markAsFoundUpdating: "Updating..."
     }
   },
   es: {
@@ -381,6 +431,31 @@ const translations: Translations = {
         emptySubtitle: "Protegelo con su huella digital única: la trufa",
         emptyCta: "Comenzar registro"
       }
+    },
+    reportLost: {
+      pickerTitle: "Activar alerta de pérdida",
+      pickerSubtitle: "¿Cuál perro quieres reportar?",
+      myDogsHeader: "Mis perros",
+      safeBadge: "Seguro",
+      lostBadge: "Perdido",
+      alreadyReported: "Ya reportado",
+      dividerOr: "o",
+      otherDogTitle: "No es mi perro",
+      otherDogSubtitle: "Encontré un perro perdido",
+      emptyDogsTitle: "Aún no tienes perros registrados",
+      emptyDogsSubtitle: "Registra un perro o ayuda a encontrar uno ajeno",
+      close: "Cerrar",
+      form: {
+        rewardLabel: "Recompensa (opcional)",
+        rewardPlaceholder: "Ej. 50000"
+      },
+      markAsFound: "Marcar como encontrado",
+      markAsFoundConfirmTitle: "Marcar como encontrado",
+      markAsFoundConfirmBody: "Se cerrará la alerta activa. ¿Continuar?",
+      markAsFoundConfirmCta: "Sí, lo encontré",
+      markAsFoundSuccess: "Actualizamos tu alerta",
+      markAsFoundErrorNoReport: "No encontramos el reporte activo",
+      markAsFoundUpdating: "Actualizando..."
     }
   }
 };

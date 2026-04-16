@@ -221,7 +221,7 @@ export default function HomeScreen() {
                 </Pressable>
               </Link>
 
-              <Link href={`/dog/${heroDog.id}` as any} asChild>
+              <Link href="/report-lost" asChild>
                 <Pressable style={styles.actionCard}>
                   <View
                     style={[

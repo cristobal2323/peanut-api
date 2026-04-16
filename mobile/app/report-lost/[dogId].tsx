@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   StyleSheet,
@@ -11,81 +11,65 @@ import {
 } from "react-native";
 import { Text } from "react-native-paper";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import * as Location from "expo-location";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
 import { FormField } from "../../src/components/FormField";
 import { InfoTip } from "../../src/components/InfoTip";
+import { DatePickerField } from "../../src/components/DatePickerField";
+import {
+  LocationPickerField,
+  LocationValue,
+} from "../../src/components/LocationPickerField";
 import { colors, fonts, spacing, radii } from "../../src/theme";
-import { api } from "../../src/api/mockApi";
+import { dogsApi } from "../../src/api/dogs";
+import { lostReportsApi, CreateLostReportPayload } from "../../src/api/lostReports";
 import { queryKeys } from "../../src/lib/queryClient";
+import { useTranslation } from "../../src/i18n";
 
 export default function ReportLostScreen() {
   const { dogId } = useLocalSearchParams<{ dogId: string }>();
   const router = useRouter();
   const qc = useQueryClient();
+  const { t } = useTranslation();
 
-  const [address, setAddress] = useState("");
-  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [whenText, setWhenText] = useState("");
+  const [location, setLocation] = useState<LocationValue | undefined>(undefined);
+  const [whenDate, setWhenDate] = useState<Date | undefined>(undefined);
   const [description, setDescription] = useState("");
+  const [reward, setReward] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [locating, setLocating] = useState(false);
-  const [dogName, setDogName] = useState("tu perro");
 
-  useEffect(() => {
-    api.fetchDog(dogId).then((d) => {
-      if (d?.name) setDogName(d.name);
-    });
-  }, [dogId]);
+  const { data: apiDog } = useQuery({
+    queryKey: queryKeys.dog(dogId),
+    queryFn: () => dogsApi.getById(dogId),
+    enabled: !!dogId,
+  });
 
-  const useMyLocation = async () => {
-    setLocating(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Sin permiso", "Activa la ubicación para usar tu posición actual.");
-        return;
-      }
-      const loc = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = loc.coords;
-      setCoords({ latitude, longitude });
-      try {
-        const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-        if (places.length > 0) {
-          const p = places[0];
-          setAddress(`${p.street ?? ""} ${p.city ?? ""}`.trim() || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-        } else {
-          setAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-        }
-      } catch {
-        setAddress(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-      }
-    } finally {
-      setLocating(false);
-    }
-  };
+  const dogName = apiDog?.name ?? "tu perro";
 
   const submit = async () => {
-    if (!address.trim()) {
-      Alert.alert("Falta ubicación", "Ingresa o detecta una ubicación.");
+    if (!location) {
+      Alert.alert("Falta ubicación", "Selecciona la última ubicación conocida.");
       return;
     }
     setSubmitting(true);
     try {
-      await api.createLostReport(dogId, {
-        description,
-        lastSeen: {
-          latitude: coords?.latitude ?? 0,
-          longitude: coords?.longitude ?? 0,
-          address,
-          time: whenText || new Date().toISOString(),
-        },
-      });
+      const rewardNumber = reward ? Number(reward) : undefined;
+      const payload: CreateLostReportPayload = {
+        dogId,
+        description: description || undefined,
+        lastSeenLatitude: location.latitude,
+        lastSeenLongitude: location.longitude,
+        lastSeenAddress: location.address,
+        lastSeenAt: whenDate ? whenDate.toISOString() : undefined,
+        rewardOffered:
+          rewardNumber !== undefined && !isNaN(rewardNumber) ? rewardNumber : undefined,
+      };
+      await lostReportsApi.create(payload);
       qc.invalidateQueries({ queryKey: queryKeys.dogs });
       qc.invalidateQueries({ queryKey: queryKeys.dog(dogId) });
       qc.invalidateQueries({ queryKey: queryKeys.lostReports });
+      qc.invalidateQueries({ queryKey: queryKeys.lostReportsMine });
       Alert.alert("Alerta activada", "Tu comunidad ya está notificada.");
       router.replace("/(tabs)");
     } catch (e: any) {
@@ -98,7 +82,7 @@ export default function ReportLostScreen() {
   const shareReport = async () => {
     try {
       await Share.share({
-        message: `🚨 ${dogName} está perdido en ${address || "ubicación desconocida"}. Si lo ves, ayúdame a contactar. — Vía Trufa ID`,
+        message: `🚨 ${dogName} está perdido en ${location?.address || "ubicación desconocida"}. Si lo ves, ayúdame a contactar. — Vía Trufa ID`,
       });
     } catch {}
   };
@@ -118,42 +102,38 @@ export default function ReportLostScreen() {
           body={`Estamos a punto de notificar a tu comunidad sobre la desaparición de ${dogName}. Asegúrate de incluir información clara.`}
         />
 
-        <View style={styles.fieldGroup}>
-          <FormField
-            label="Última ubicación conocida"
-            required
-            icon="map-marker"
-            placeholder="Ej. Parque Bicentenario, Vitacura"
-            value={address}
-            onChangeText={setAddress}
-          />
-          <Pressable style={styles.locateBtn} onPress={useMyLocation} disabled={locating}>
-            <MaterialCommunityIcons
-              name="crosshairs-gps"
-              size={16}
-              color={colors.secondary}
-            />
-            <Text style={styles.locateText}>
-              {locating ? "Detectando..." : "Usar mi ubicación actual"}
-            </Text>
-          </Pressable>
-        </View>
+        <LocationPickerField
+          label="Última ubicación conocida"
+          required
+          placeholder="Selecciona en el mapa"
+          value={location}
+          onChange={setLocation}
+        />
 
-        <FormField
+        <DatePickerField
           label="¿Cuándo se perdió?"
-          icon="clock-outline"
-          placeholder="DD/MM/YYYY HH:mm"
-          value={whenText}
-          onChangeText={setWhenText}
+          placeholder="Selecciona fecha y hora"
+          mode="datetime"
+          value={whenDate}
+          onChange={setWhenDate}
         />
 
         <FormField
           label="Descripción"
-          placeholder="Cómo iba vestido, comportamiento, recompensa, etc."
+          placeholder="Cómo iba vestido, comportamiento, etc."
           multiline
           numberOfLines={5}
           value={description}
           onChangeText={setDescription}
+        />
+
+        <FormField
+          label={t("reportLost.form.rewardLabel")}
+          icon="cash"
+          keyboardType="numeric"
+          placeholder={t("reportLost.form.rewardPlaceholder")}
+          value={reward}
+          onChangeText={setReward}
         />
 
         <InfoTip
@@ -189,24 +169,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
     paddingBottom: spacing.xxl,
-  },
-  fieldGroup: {
-    gap: spacing.sm,
-  },
-  locateBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs + 2,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: colors.secondaryContainer,
-    borderRadius: radii.full,
-    alignSelf: "flex-start",
-  },
-  locateText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: colors.secondary,
   },
   footer: {
     padding: spacing.lg,

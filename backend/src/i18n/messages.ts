@@ -13,6 +13,8 @@ const messages: Record<Lang, Record<MessageKey, string>> = {
     DOG_NOT_FOUND: "Dog not found",
     OWNER_MISMATCH_FOR_DOG: "Owner mismatch for dog",
     LOST_REPORT_NOT_FOUND: "Lost report not found",
+    LOST_REPORT_ALREADY_ACTIVE: "Dog already has an active lost report",
+    LOST_REPORT_NOT_ACTIVE: "Lost report is not active",
     BREED_NOT_FOUND: "Breed not found",
     COLOR_NOT_FOUND: "Color not found"
   },
@@ -25,6 +27,8 @@ const messages: Record<Lang, Record<MessageKey, string>> = {
     DOG_NOT_FOUND: "Perro no encontrado",
     OWNER_MISMATCH_FOR_DOG: "El dueño no coincide con el perro",
     LOST_REPORT_NOT_FOUND: "Reporte de pérdida no encontrado",
+    LOST_REPORT_ALREADY_ACTIVE: "El perro ya tiene un reporte de pérdida activo",
+    LOST_REPORT_NOT_ACTIVE: "El reporte no está activo",
     BREED_NOT_FOUND: "Raza no encontrada",
     COLOR_NOT_FOUND: "Color no encontrado"
   }
@@ -39,6 +43,8 @@ export type MessageKey =
   | "DOG_NOT_FOUND"
   | "OWNER_MISMATCH_FOR_DOG"
   | "LOST_REPORT_NOT_FOUND"
+  | "LOST_REPORT_ALREADY_ACTIVE"
+  | "LOST_REPORT_NOT_ACTIVE"
   | "BREED_NOT_FOUND"
   | "COLOR_NOT_FOUND";
 
