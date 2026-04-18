@@ -27,9 +27,36 @@ export default function SettingsScreen() {
 
   const handleNotifPref = (key: keyof NotificationPrefs, value: boolean) => {
     setNotificationPref(key, value);
-    if (key === "emailDigest") {
+    if (key === "nearby") {
+      notificationsApi.updateSettings({ nearbyEnabled: value }).catch(() => {});
+    } else if (key === "emailDigest") {
       notificationsApi.updateSettings({ emailEnabled: value }).catch(() => {});
     }
+  };
+
+  const radiusOptions = [5, 10, 15, 25, 50];
+  const [radius, setRadius] = React.useState(10);
+
+  React.useEffect(() => {
+    notificationsApi.getSettings().then((s) => {
+      if (s?.lostAlertsRadiusKm) setRadius(s.lostAlertsRadiusKm);
+    }).catch(() => {});
+  }, []);
+
+  const handleRadiusChange = () => {
+    Alert.alert(
+      "Radio de alertas",
+      "Recibirás alertas de perros perdidos dentro de este radio.",
+      radiusOptions.map((km) => ({
+        text: `${km} km`,
+        onPress: () => {
+          setRadius(km);
+          notificationsApi
+            .updateSettings({ lostAlertsRadiusKm: km })
+            .catch(() => {});
+        },
+      })),
+    );
   };
 
   const handleLogout = () => {
@@ -142,9 +169,9 @@ export default function SettingsScreen() {
             icon="map-marker-radius"
             iconColor={colors.secondary}
             label="Radio de alertas"
-            rightLabel="5 km"
+            rightLabel={`${radius} km`}
             divider={false}
-            onPress={() => Alert.alert("Próximamente", "Configuración de radio en desarrollo.")}
+            onPress={handleRadiusChange}
           />
         </SectionCard>
 

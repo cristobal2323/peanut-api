@@ -1,4 +1,4 @@
-import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class RegisterPushTokenDto {
   @IsString()
@@ -13,4 +13,12 @@ export class RegisterPushTokenDto {
   @IsString()
   @IsIn(['es', 'en'])
   locale?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
 }

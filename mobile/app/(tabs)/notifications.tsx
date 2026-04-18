@@ -119,7 +119,8 @@ export default function NotificationsScreen() {
     const lostReportId = item.data?.lostReportId;
     if (
       (item.type === "sighting" || item.data?.type === "NEW_SIGHTING" ||
-        item.data?.type === "LOST_REPORT_UPDATED") &&
+        item.data?.type === "LOST_REPORT_UPDATED" ||
+        item.data?.type === "NEARBY_LOST_REPORT") &&
       lostReportId
     ) {
       router.push({
@@ -232,7 +233,8 @@ export default function NotificationsScreen() {
             item.data?.lostReportId &&
             (item.type === "sighting" ||
               item.data?.type === "NEW_SIGHTING" ||
-              item.data?.type === "LOST_REPORT_UPDATED");
+              item.data?.type === "LOST_REPORT_UPDATED" ||
+              item.data?.type === "NEARBY_LOST_REPORT");
 
           return (
             <Pressable

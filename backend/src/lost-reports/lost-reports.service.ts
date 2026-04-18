@@ -9,7 +9,9 @@ import {
 } from './dto/list-public-lost-reports.dto';
 import { t } from '../i18n/messages';
 import {
+  LOST_REPORT_CREATED,
   LOST_REPORT_STATUS_CHANGED,
+  LostReportCreatedEvent,
   LostReportStatusChangedEvent,
 } from '../notifications/events/notification.events';
 
@@ -23,7 +25,7 @@ export class LostReportsService {
   ) {}
 
   async create(ownerId: string, payload: CreateLostReportDto, lang?: string) {
-    return this.prisma.$transaction(async (tx: Tx) => {
+    const result = await this.prisma.$transaction(async (tx: Tx) => {
       const dog = await tx.dog.findUnique({ where: { id: payload.dogId } });
       if (!dog) {
         throw new HttpException(t(lang, 'DOG_NOT_FOUND'), HttpStatus.NOT_FOUND);
@@ -76,6 +78,22 @@ export class LostReportsService {
 
       return report;
     });
+
+    const loc = result.lastSeenLocation;
+    if (loc) {
+      this.eventEmitter.emit(
+        LOST_REPORT_CREATED,
+        new LostReportCreatedEvent(
+          result.id,
+          ownerId,
+          result.dog?.name ?? 'Perro',
+          loc.latitude,
+          loc.longitude,
+        ),
+      );
+    }
+
+    return result;
   }
 
   async listByOwner(ownerId: string, skip = 0, take = 20) {

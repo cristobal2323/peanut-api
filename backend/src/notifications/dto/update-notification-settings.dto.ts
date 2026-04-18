@@ -14,8 +14,20 @@ export class UpdateNotificationSettingsDto {
   smsEnabled?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  nearbyEnabled?: boolean;
+
+  @IsOptional()
   @IsNumber()
   @Min(1)
   @Max(100)
   lostAlertsRadiusKm?: number;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
 }

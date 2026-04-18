@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import * as Location from "expo-location";
 import { Platform } from "react-native";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
@@ -51,12 +52,28 @@ export function usePushNotifications() {
 
       registeredRef.current = true;
 
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+      try {
+        const { status: locStatus } =
+          await Location.getForegroundPermissionsAsync();
+        if (locStatus === "granted") {
+          const loc = await Location.getLastKnownPositionAsync();
+          if (loc) {
+            latitude = loc.coords.latitude;
+            longitude = loc.coords.longitude;
+          }
+        }
+      } catch {}
+
       await http("/notifications/push-token", {
         method: "POST",
         body: JSON.stringify({
           token: pushToken.data,
           platform: Platform.OS,
           locale,
+          latitude,
+          longitude,
         }),
       }).catch(() => {});
 
@@ -72,6 +89,25 @@ export function usePushNotifications() {
       mounted = false;
     };
   }, [token, locale]);
+
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status !== "granted") return;
+        const loc = await Location.getLastKnownPositionAsync();
+        if (!loc) return;
+        await http("/notifications/settings", {
+          method: "PATCH",
+          body: JSON.stringify({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          }),
+        });
+      } catch {}
+    })();
+  }, [token]);
 
   useEffect(() => {
     const responseSub =
@@ -99,6 +135,7 @@ function handleNotificationNavigation(
   switch (type) {
     case "NEW_SIGHTING":
     case "LOST_REPORT_UPDATED":
+    case "NEARBY_LOST_REPORT":
       if (data.lostReportId) {
         router.push({
           pathname: "/report/[id]",

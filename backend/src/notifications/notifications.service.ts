@@ -91,14 +91,25 @@ export class NotificationsService {
     token: string,
     platform: string,
     locale?: string,
+    latitude?: number,
+    longitude?: number,
   ) {
     return this.prisma.deviceToken.upsert({
       where: { token },
-      create: { userId, token, platform, locale: locale ?? 'es' },
+      create: {
+        userId,
+        token,
+        platform,
+        locale: locale ?? 'es',
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
+      },
       update: {
         userId,
         platform,
         ...(locale ? { locale } : {}),
+        ...(latitude !== undefined ? { latitude } : {}),
+        ...(longitude !== undefined ? { longitude } : {}),
       },
     });
   }

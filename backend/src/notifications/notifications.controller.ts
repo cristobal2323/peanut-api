@@ -45,6 +45,8 @@ export class NotificationsController {
       body.token,
       body.platform,
       body.locale,
+      body.latitude,
+      body.longitude,
     );
   }
 

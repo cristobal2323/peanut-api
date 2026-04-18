@@ -22,7 +22,9 @@ const messages: Record<Lang, Record<MessageKey, string>> = {
     NOTIF_LOST_REPORT_RESOLVED_TITLE: "Lost report resolved",
     NOTIF_LOST_REPORT_RESOLVED_BODY: "A lost report you contributed to has been resolved.",
     NOTIF_LOST_REPORT_CANCELLED_TITLE: "Lost report cancelled",
-    NOTIF_LOST_REPORT_CANCELLED_BODY: "A lost report you contributed to has been cancelled."
+    NOTIF_LOST_REPORT_CANCELLED_BODY: "A lost report you contributed to has been cancelled.",
+    NOTIF_NEARBY_LOST_REPORT_TITLE: "Lost dog near you",
+    NOTIF_NEARBY_LOST_REPORT_BODY: "A dog was reported as lost near your location. Help spread the word."
   },
   es: {
     EMAIL_REGISTERED: "Correo ya registrado",
@@ -42,7 +44,9 @@ const messages: Record<Lang, Record<MessageKey, string>> = {
     NOTIF_LOST_REPORT_RESOLVED_TITLE: "Reporte de pérdida resuelto",
     NOTIF_LOST_REPORT_RESOLVED_BODY: "Un reporte de pérdida al que contribuiste ha sido resuelto.",
     NOTIF_LOST_REPORT_CANCELLED_TITLE: "Reporte de pérdida cancelado",
-    NOTIF_LOST_REPORT_CANCELLED_BODY: "Un reporte de pérdida al que contribuiste ha sido cancelado."
+    NOTIF_LOST_REPORT_CANCELLED_BODY: "Un reporte de pérdida al que contribuiste ha sido cancelado.",
+    NOTIF_NEARBY_LOST_REPORT_TITLE: "Perro perdido cerca de ti",
+    NOTIF_NEARBY_LOST_REPORT_BODY: "Un perro fue reportado como perdido cerca de tu ubicación. Ayuda a difundir."
   }
 };
 
@@ -64,7 +68,9 @@ export type MessageKey =
   | "NOTIF_LOST_REPORT_RESOLVED_TITLE"
   | "NOTIF_LOST_REPORT_RESOLVED_BODY"
   | "NOTIF_LOST_REPORT_CANCELLED_TITLE"
-  | "NOTIF_LOST_REPORT_CANCELLED_BODY";
+  | "NOTIF_LOST_REPORT_CANCELLED_BODY"
+  | "NOTIF_NEARBY_LOST_REPORT_TITLE"
+  | "NOTIF_NEARBY_LOST_REPORT_BODY";
 
 export const t = (lang: string | undefined, key: MessageKey): string => {
   const locale = normalizeLang(lang);

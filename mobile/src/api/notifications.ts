@@ -4,7 +4,7 @@ import type { AppNotification, NotificationKind } from "../types";
 type NotificationApi = {
   id: string;
   userId: string;
-  type: "SCAN_MATCH" | "NEW_SIGHTING" | "LOST_REPORT_UPDATED" | "SYSTEM";
+  type: "SCAN_MATCH" | "NEW_SIGHTING" | "LOST_REPORT_UPDATED" | "NEARBY_LOST_REPORT" | "SYSTEM";
   payload: Record<string, string>;
   read: boolean;
   createdAt: string;
@@ -19,6 +19,7 @@ const typeMap: Record<NotificationApi["type"], NotificationKind> = {
   SCAN_MATCH: "match",
   NEW_SIGHTING: "sighting",
   LOST_REPORT_UPDATED: "system",
+  NEARBY_LOST_REPORT: "sighting",
   SYSTEM: "system",
 };
 
@@ -76,6 +77,7 @@ export const notificationsApi = {
   updateSettings: (data: {
     pushEnabled?: boolean;
     emailEnabled?: boolean;
+    nearbyEnabled?: boolean;
     lostAlertsRadiusKm?: number;
   }) =>
     http("/notifications/settings", {

@@ -64,6 +64,7 @@ enum NotificationType {
   SCAN_MATCH
   NEW_SIGHTING
   LOST_REPORT_UPDATED
+  NEARBY_LOST_REPORT
   SYSTEM
 }
 
@@ -339,14 +340,17 @@ model Notification {
 }
 
 model NotificationSettings {
-  id                String   @id @default(uuid())
-  userId            String   @unique
-  pushEnabled       Boolean
-  emailEnabled      Boolean
-  smsEnabled        Boolean
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  pushEnabled        Boolean
+  emailEnabled       Boolean
+  smsEnabled         Boolean
+  nearbyEnabled      Boolean  @default(true)
   lostAlertsRadiusKm Float
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  latitude           Float?
+  longitude          Float?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
 }
@@ -357,6 +361,8 @@ model DeviceToken {
   token     String   @unique
   platform  String
   locale    String   @default("es")
+  latitude  Float?
+  longitude Float?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
