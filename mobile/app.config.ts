@@ -81,8 +81,7 @@ export default ({ config }: ConfigContext): ExpoConfig =>
 
     extra: {
       eas: {
-        projectId:
-          process.env.EAS_PROJECT_ID ?? "00000000-0000-0000-0000-000000000000",
+        projectId: process.env.EAS_PROJECT_ID ?? "3e40fac8-72f9-47ef-a478-4224e21150d9",
       },
       sentryDsn: process.env.SENTRY_DSN,
     },
