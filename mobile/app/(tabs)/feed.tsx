@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../../src/store/auth";
 import { Text } from "react-native-paper";
@@ -82,6 +83,7 @@ function useDebouncedValue<T>(value: T, delay = 300): T {
 
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const locale = usePreferencesStore((s) => s.locale);
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -531,6 +533,15 @@ export default function FeedScreen() {
                 distanceKm={item.distanceKm}
                 date={timeAgo(item.createdAt)}
                 location={item.location}
+                onPress={
+                  !isSighting
+                    ? () =>
+                        router.push({
+                          pathname: "/report/[id]",
+                          params: { id: item.id },
+                        })
+                    : undefined
+                }
               />
               {isActiveSighting && (
                 <View style={styles.sightingActions}>

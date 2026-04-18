@@ -2,25 +2,36 @@ import React, { useMemo, useState } from "react";
 import {
   View,
   StyleSheet,
-  ScrollView,
+  FlatList,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { EmptyState } from "../../src/components/EmptyState";
 import { IconCircle } from "../../src/components/IconCircle";
 import { spacing, colors, fonts, radii } from "../../src/theme";
-import { api } from "../../src/api/mockApi";
+import { notificationsApi } from "../../src/api/notifications";
 import { queryKeys } from "../../src/lib/queryClient";
 import { AppNotification, NotificationKind } from "../../src/types";
 
 type Filter = "all" | "unread";
+const PAGE_SIZE = 20;
 
 const META: Record<
   NotificationKind,
-  { icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string; tintBg: string }
+  {
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
+    color: string;
+    tintBg: string;
+  }
 > = {
   match: {
     icon: "heart-pulse",
@@ -52,33 +63,75 @@ function timeAgo(iso: string): string {
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
 
-  const { data: notifications = [] } = useQuery({
-    queryKey: queryKeys.notifications,
-    queryFn: api.fetchNotifications,
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: [...queryKeys.notifications, "paginated"],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      notificationsApi.listPaginated({ skip: pageParam, take: PAGE_SIZE }),
+    getNextPageParam: (last) => last.nextCursor,
   });
 
-  const mutation = useMutation({
-    mutationFn: api.markNotificationAsRead,
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications }),
-  });
-
-  const markAll = useMutation({
-    mutationFn: api.markAllNotificationsAsRead,
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications }),
-  });
+  const allNotifications = useMemo(
+    () => data?.pages.flatMap((p) => p.items) ?? [],
+    [data]
+  );
 
   const unread = useMemo(
-    () => notifications.filter((n) => !n.read).length,
-    [notifications]
+    () => allNotifications.filter((n) => !n.read).length,
+    [allNotifications]
   );
 
   const filtered = useMemo(() => {
-    if (filter === "unread") return notifications.filter((n) => !n.read);
-    return notifications;
-  }, [notifications, filter]);
+    if (filter === "unread")
+      return allNotifications.filter((n) => !n.read);
+    return allNotifications;
+  }, [allNotifications, filter]);
+
+  const markOne = useMutation({
+    mutationFn: (id: string) => notificationsApi.markRead([id]),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.notifications });
+    },
+  });
+
+  const markAll = useMutation({
+    mutationFn: notificationsApi.markAllRead,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.notifications });
+    },
+  });
+
+  const handlePress = (item: AppNotification) => {
+    if (!item.read) {
+      markOne.mutate(item.id);
+    }
+
+    const lostReportId = item.data?.lostReportId;
+    if (
+      (item.type === "sighting" || item.data?.type === "NEW_SIGHTING" ||
+        item.data?.type === "LOST_REPORT_UPDATED") &&
+      lostReportId
+    ) {
+      router.push({
+        pathname: "/report/[id]",
+        params: { id: lostReportId },
+      });
+    }
+  };
+
+  const loadMore = () => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + spacing.md }]}>
@@ -87,9 +140,7 @@ export default function NotificationsScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Alertas</Text>
           <Text style={styles.subtitle}>
-            {unread > 0
-              ? `Tienes ${unread} sin leer`
-              : "Estás al día"}
+            {unread > 0 ? `Tienes ${unread} sin leer` : "Estás al día"}
           </Text>
         </View>
         {unread > 0 && (
@@ -105,7 +156,12 @@ export default function NotificationsScreen() {
           style={[styles.chip, filter === "all" && styles.chipActive]}
           onPress={() => setFilter("all")}
         >
-          <Text style={[styles.chipText, filter === "all" && styles.chipTextActive]}>
+          <Text
+            style={[
+              styles.chipText,
+              filter === "all" && styles.chipTextActive,
+            ]}
+          >
             Todas
           </Text>
         </Pressable>
@@ -113,7 +169,12 @@ export default function NotificationsScreen() {
           style={[styles.chip, filter === "unread" && styles.chipActive]}
           onPress={() => setFilter("unread")}
         >
-          <Text style={[styles.chipText, filter === "unread" && styles.chipTextActive]}>
+          <Text
+            style={[
+              styles.chipText,
+              filter === "unread" && styles.chipTextActive,
+            ]}
+          >
             No leídas{unread > 0 ? ` (${unread})` : ""}
           </Text>
         </Pressable>
@@ -122,65 +183,94 @@ export default function NotificationsScreen() {
             style={styles.markAllBtn}
             onPress={() => markAll.mutate()}
           >
-            <MaterialCommunityIcons name="check-all" size={16} color={colors.primary} />
+            <MaterialCommunityIcons
+              name="check-all"
+              size={16}
+              color={colors.primary}
+            />
             <Text style={styles.markAllText}>Marcar todas</Text>
           </Pressable>
         )}
       </View>
 
       {/* List */}
-      <ScrollView
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-      >
-        {filtered.length === 0 ? (
-          <EmptyState
-            icon="bell-off-outline"
-            message={filter === "unread" ? "No tienes alertas sin leer" : "Sin alertas nuevas"}
-          />
-        ) : (
-          filtered.map((item) => (
-            <NotifCard
-              key={item.id}
-              item={item}
-              onPress={() => !item.read && mutation.mutate(item.id)}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.4}
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.center}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : (
+            <EmptyState
+              icon="bell-off-outline"
+              message={
+                filter === "unread"
+                  ? "No tienes alertas sin leer"
+                  : "Sin alertas nuevas"
+              }
             />
-          ))
-        )}
-      </ScrollView>
-    </View>
-  );
-}
+          )
+        }
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : (
+            <View style={{ height: spacing.xxl }} />
+          )
+        }
+        renderItem={({ item }) => {
+          const meta = META[item.type];
+          const hasNavigation =
+            item.data?.lostReportId &&
+            (item.type === "sighting" ||
+              item.data?.type === "NEW_SIGHTING" ||
+              item.data?.type === "LOST_REPORT_UPDATED");
 
-function NotifCard({
-  item,
-  onPress,
-}: {
-  item: AppNotification;
-  onPress: () => void;
-}) {
-  const meta = META[item.type];
-  return (
-    <Pressable
-      style={[
-        styles.card,
-        { backgroundColor: meta.tintBg },
-        !item.read && [styles.unread, { borderLeftColor: meta.color }],
-      ]}
-      onPress={onPress}
-    >
-      <IconCircle icon={meta.icon} color={meta.color} size={44} />
-      <View style={{ flex: 1 }}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardTime}>{timeAgo(item.createdAt)}</Text>
-        </View>
-        <Text style={styles.cardMessage}>{item.message}</Text>
-      </View>
-      {!item.read && item.type === "sighting" && (
-        <MaterialCommunityIcons name="alert-circle" size={18} color={colors.error} />
-      )}
-    </Pressable>
+          return (
+            <Pressable
+              style={[
+                styles.card,
+                { backgroundColor: meta.tintBg },
+                !item.read && [
+                  styles.unreadCard,
+                  { borderLeftColor: meta.color },
+                ],
+              ]}
+              onPress={() => handlePress(item)}
+            >
+              <IconCircle icon={meta.icon} color={meta.color} size={44} />
+              <View style={{ flex: 1 }}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <Text style={styles.cardTime}>
+                    {timeAgo(item.createdAt)}
+                  </Text>
+                </View>
+                <Text style={styles.cardMessage}>{item.message}</Text>
+                {hasNavigation && (
+                  <View style={styles.cardAction}>
+                    <Text style={styles.cardActionText}>Ver reporte</Text>
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={14}
+                      color={colors.primary}
+                    />
+                  </View>
+                )}
+              </View>
+            </Pressable>
+          );
+        }}
+      />
+    </View>
   );
 }
 
@@ -218,7 +308,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
 
-  // Filters
   filterRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -259,10 +348,9 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
 
-  // List
   list: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.lg,
     gap: spacing.sm + 2,
   },
   card: {
@@ -274,7 +362,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.outlineVariant,
   },
-  unread: {
+  unreadCard: {
     borderLeftWidth: 4,
   },
   cardHeader: {
@@ -300,5 +388,24 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 4,
     lineHeight: 18,
+  },
+  cardAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    marginTop: 6,
+  },
+  cardActionText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: colors.primary,
+  },
+  center: {
+    paddingVertical: spacing.xl,
+    alignItems: "center",
+  },
+  footerLoader: {
+    paddingVertical: spacing.lg,
+    alignItems: "center",
   },
 });

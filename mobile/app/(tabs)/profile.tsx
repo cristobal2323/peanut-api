@@ -9,6 +9,8 @@ import {
 import { Text } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, Link } from "expo-router";
+import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { GradientHeader } from "../../src/components/GradientHeader";
 import { SectionCard } from "../../src/components/SectionCard";
@@ -18,6 +20,7 @@ import { useAuthStore } from "../../src/store/auth";
 import { useDogsStore } from "../../src/store/dogs";
 import { spacing, colors, fonts, radii } from "../../src/theme";
 import { api } from "../../src/api/mockApi";
+import { http } from "../../src/api/http";
 import { queryKeys } from "../../src/lib/queryClient";
 
 export default function ProfileScreen() {
@@ -32,7 +35,15 @@ export default function ProfileScreen() {
     queryFn: () => api.fetchUserStats(user?.id ?? "guest"),
   });
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
+      await http("/notifications/push-token", {
+        method: "DELETE",
+        body: JSON.stringify({ token: pushToken.data }),
+      });
+    } catch {}
     logout();
     qc.clear();
     router.replace("/(auth)/login");

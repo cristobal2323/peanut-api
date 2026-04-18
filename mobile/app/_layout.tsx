@@ -21,6 +21,7 @@ import {
 import { TrufaTheme, colors } from "../src/theme";
 import { queryClient } from "../src/lib/queryClient";
 import { initSentry } from "../src/lib/sentry";
+import { usePushNotifications } from "../src/hooks/usePushNotifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -56,6 +57,8 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
   });
+
+  usePushNotifications();
 
   useEffect(() => {
     initSentry();

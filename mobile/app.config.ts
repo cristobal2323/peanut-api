@@ -66,6 +66,13 @@ export default ({ config }: ConfigContext): ExpoConfig =>
             "Allow Trufa ID to access your camera for dog scanning.",
         },
       ],
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/icon.png",
+          color: "#F4A261",
+        },
+      ],
       "./plugins/withCleartextTraffic",
       "./plugins/withPodfileProperties",
       "@react-native-community/datetimepicker",

@@ -7,8 +7,16 @@ import { Badge, Text } from "react-native-paper";
 import { useQuery } from "@tanstack/react-query";
 import { colors, spacing, radii, fonts } from "../../src/theme";
 import { useAuthStore } from "../../src/store/auth";
-import { api } from "../../src/api/mockApi";
+import { notificationsApi } from "../../src/api/notifications";
 import { queryKeys } from "../../src/lib/queryClient";
+
+function useUnreadCount() {
+  const { data: notifications = [] } = useQuery({
+    queryKey: queryKeys.notifications,
+    queryFn: notificationsApi.list,
+  });
+  return notifications.filter((n) => !n.read).length;
+}
 
 const TabIcon = ({
   name,
@@ -33,6 +41,7 @@ const ScanTabIcon = () => (
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
+  const unreadCount = useUnreadCount();
 
   return (
     <Tabs
@@ -100,6 +109,16 @@ export default function TabsLayout() {
         options={{
           title: "Alertas",
           headerShown: false,
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.error,
+            color: "#fff",
+            fontSize: 10,
+            fontFamily: fonts.bodySemiBold,
+            minWidth: 18,
+            height: 18,
+            lineHeight: 14,
+          },
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="bell-outline" color={color} size={size} focused={focused} />,
         }}
       />
@@ -121,7 +140,7 @@ const TabHeader = ({ title, routeName }: { title?: string; routeName: string }) 
   const user = useAuthStore((state) => state.user);
   const { data: notifications = [] } = useQuery({
     queryKey: queryKeys.notifications,
-    queryFn: api.fetchNotifications,
+    queryFn: notificationsApi.list,
   });
   const unread = notifications.filter((n) => !n.read).length;
 

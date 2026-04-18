@@ -70,6 +70,7 @@ export interface AppNotification {
   createdAt: string;
   read: boolean;
   type: NotificationKind;
+  data?: Record<string, string>;
 }
 
 export type ReportType = "lost" | "found";

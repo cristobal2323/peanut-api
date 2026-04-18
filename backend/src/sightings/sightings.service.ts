@@ -1,8 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma, SightingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSightingDto } from './dto/create-sighting.dto';
 import { ListPublicSightingsDto } from './dto/list-public-sightings.dto';
+import {
+  SIGHTING_CREATED,
+  SightingCreatedEvent,
+} from '../notifications/events/notification.events';
 
 const SIGHTING_INCLUDE = {
   location: true,
@@ -13,7 +18,10 @@ const SIGHTING_INCLUDE = {
 
 @Injectable()
 export class SightingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async create(userId: string, payload: CreateSightingDto) {
     const location = await this.prisma.location.create({
@@ -35,7 +43,7 @@ export class SightingsService {
         })
       : null;
 
-    return this.prisma.sighting.create({
+    const sighting = await this.prisma.sighting.create({
       data: {
         userId,
         dogId: payload.dogId,
@@ -46,6 +54,17 @@ export class SightingsService {
       },
       include: SIGHTING_INCLUDE,
     });
+
+    this.eventEmitter.emit(
+      SIGHTING_CREATED,
+      new SightingCreatedEvent(
+        sighting.id,
+        payload.lostReportId ?? null,
+        userId,
+      ),
+    );
+
+    return sighting;
   }
 
   async listPublic(filter: ListPublicSightingsDto = {}) {

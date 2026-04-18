@@ -3,6 +3,8 @@ import { View, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
 import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
+import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { ScreenHeader } from "../src/components/ScreenHeader";
 import { SectionCard } from "../src/components/SectionCard";
 import { SettingsRow } from "../src/components/SettingsRow";
@@ -12,6 +14,8 @@ import {
   NotificationPrefs,
 } from "../src/store/preferences";
 import { useAuthStore } from "../src/store/auth";
+import { notificationsApi } from "../src/api/notifications";
+import { http } from "../src/api/http";
 import { colors, fonts, spacing, radii } from "../src/theme";
 
 export default function SettingsScreen() {
@@ -21,13 +25,28 @@ export default function SettingsScreen() {
   const setNotificationPref = usePreferencesStore((s) => s.setNotificationPref);
   const logout = useAuthStore((s) => s.logout);
 
+  const handleNotifPref = (key: keyof NotificationPrefs, value: boolean) => {
+    setNotificationPref(key, value);
+    if (key === "emailDigest") {
+      notificationsApi.updateSettings({ emailEnabled: value }).catch(() => {});
+    }
+  };
+
   const handleLogout = () => {
     Alert.alert("Cerrar sesión", "¿Estás seguro?", [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Cerrar sesión",
         style: "destructive",
-        onPress: () => {
+        onPress: async () => {
+          try {
+            const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+            const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
+            await http("/notifications/push-token", {
+              method: "DELETE",
+              body: JSON.stringify({ token: pushToken.data }),
+            });
+          } catch {}
           logout();
           qc.clear();
           router.replace("/(auth)/login");
@@ -85,25 +104,25 @@ export default function SettingsScreen() {
             label="Alertas cercanas"
             sub="Perros perdidos en tu zona"
             value={notifications.nearby}
-            onChange={(v) => setNotificationPref("nearby", v)}
+            onChange={(v) => handleNotifPref("nearby", v)}
           />
           <NotifRow
             label="Coincidencias"
             sub="Posibles matches con tu perro"
             value={notifications.matches}
-            onChange={(v) => setNotificationPref("matches", v)}
+            onChange={(v) => handleNotifPref("matches", v)}
           />
           <NotifRow
             label="Avistamientos"
             sub="Reportes en tu radio"
             value={notifications.sightings}
-            onChange={(v) => setNotificationPref("sightings", v)}
+            onChange={(v) => handleNotifPref("sightings", v)}
           />
           <NotifRow
             label="Resumen por email"
             sub="Newsletter semanal"
             value={notifications.emailDigest}
-            onChange={(v) => setNotificationPref("emailDigest", v)}
+            onChange={(v) => handleNotifPref("emailDigest", v)}
             last
           />
         </SectionCard>

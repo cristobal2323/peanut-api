@@ -9,12 +9,12 @@ import {
   Dimensions,
   Linking,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Text } from "react-native-paper";
-import { useLocalSearchParams, useRouter, Link } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapView, { Marker } from "react-native-maps";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
@@ -22,42 +22,96 @@ import { SectionCard } from "../../src/components/SectionCard";
 import { IconCircle } from "../../src/components/IconCircle";
 import { StatusBadge } from "../../src/components/StatusBadge";
 import { colors, fonts, spacing, radii } from "../../src/theme";
-import { api } from "../../src/api/mockApi";
+import { lostReportsApi, LostReportApi } from "../../src/api/lostReports";
+import { computeAgeYears } from "../../src/api/dogs";
+import { usePreferencesStore } from "../../src/store/preferences";
 import { queryKeys } from "../../src/lib/queryClient";
 
 const HERO_HEIGHT = 320;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+const sizeLabel: Record<string, Record<string, string>> = {
+  es: { SMALL: "Pequeño", MEDIUM: "Mediano", LARGE: "Grande" },
+  en: { SMALL: "Small", MEDIUM: "Medium", LARGE: "Large" },
+};
+
+const sexLabel: Record<string, Record<string, string>> = {
+  es: { MALE: "Macho", FEMALE: "Hembra", UNKNOWN: "—" },
+  en: { MALE: "Male", FEMALE: "Female", UNKNOWN: "—" },
+};
+
+function statusVariant(status: string): "lost" | "found" | "safe" {
+  if (status === "RESOLVED") return "found";
+  if (status === "ACTIVE") return "lost";
+  return "safe";
+}
+
 export default function ReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const locale = usePreferencesStore((s) => s.locale);
 
   const { data: report, isLoading } = useQuery({
     queryKey: queryKeys.lostReport(id),
-    queryFn: () => api.fetchLostReport(id),
+    queryFn: () => lostReportsApi.getById(id),
   });
 
   if (isLoading || !report) {
     return (
       <View style={styles.center}>
         <ScreenHeader />
-        <Text style={styles.loadingText}>Cargando reporte...</Text>
+        <ActivityIndicator
+          color={colors.primary}
+          style={{ marginTop: spacing.xxl }}
+        />
       </View>
     );
   }
 
-  const heroPhoto = report.images?.[0];
+  const dog = report.dog;
+  const loc = report.lastSeenLocation;
+  const owner = report.owner;
+  const sightings = (report as any).sightings ?? [];
+
+  const breedName = dog?.breed
+    ? locale === "en"
+      ? dog.breed.nameEn ?? dog.breed.nameEs
+      : dog.breed.nameEs
+    : dog?.mixedBreed
+      ? locale === "es" ? "Mestizo" : "Mixed"
+      : "—";
+
+  const colorName = dog?.color
+    ? locale === "en"
+      ? dog.color.nameEn ?? dog.color.nameEs
+      : dog.color.nameEs
+    : "—";
+
+  const age = computeAgeYears(dog?.birthDate);
+  const ageText = age !== undefined
+    ? age === 0
+      ? locale === "es" ? "Cachorro" : "Puppy"
+      : `${age} ${age === 1 ? (locale === "es" ? "año" : "year") : (locale === "es" ? "años" : "years")}`
+    : "—";
+
+  const heroPhoto = dog?.photoUrl;
 
   const shareReport = async () => {
+    const name = dog?.name ?? "Perro";
     try {
       await Share.share({
-        message: `🚨 ${report.dogName} está perdido. Por favor ayuda a difundir. — Vía Trufa ID`,
+        message: `🚨 ${name} está perdido. Por favor ayuda a difundir. — Vía Trufa ID`,
       });
     } catch {}
   };
 
   const callOwner = () => {
-    Linking.openURL("tel:+56998765432").catch(() =>
+    const phone = owner?.phone;
+    if (!phone) {
+      Alert.alert("Sin teléfono", "El dueño no tiene teléfono registrado.");
+      return;
+    }
+    Linking.openURL(`tel:${phone}`).catch(() =>
       Alert.alert("Error", "No se pudo abrir el marcador.")
     );
   };
@@ -74,7 +128,11 @@ export default function ReportDetailScreen() {
             <Image source={{ uri: heroPhoto }} style={styles.heroImage} />
           ) : (
             <View style={[styles.heroImage, styles.heroPlaceholder]}>
-              <MaterialCommunityIcons name="dog" size={80} color={colors.outlineVariant} />
+              <MaterialCommunityIcons
+                name="dog"
+                size={80}
+                color={colors.outlineVariant}
+              />
             </View>
           )}
           <LinearGradient
@@ -83,35 +141,65 @@ export default function ReportDetailScreen() {
           />
           <View style={styles.heroBottom}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroName}>{report.dogName}</Text>
-              {report.lastSeen.address && (
+              <Text style={styles.heroName}>{dog?.name ?? "Perro"}</Text>
+              {loc?.addressText && (
                 <View style={styles.heroLocationRow}>
-                  <MaterialCommunityIcons name="map-marker" size={14} color="#ffffff" />
-                  <Text style={styles.heroLocation}>{report.lastSeen.address}</Text>
+                  <MaterialCommunityIcons
+                    name="map-marker"
+                    size={14}
+                    color="#ffffff"
+                  />
+                  <Text style={styles.heroLocation}>{loc.addressText}</Text>
                 </View>
               )}
             </View>
-            <StatusBadge variant="lost" size="lg" />
+            <StatusBadge variant={statusVariant(report.status)} size="lg" />
           </View>
         </View>
 
         {/* Body */}
         <View style={styles.body}>
-          {/* Info */}
           <SectionCard title="Información">
             <View style={styles.grid}>
-              <Tile icon="dog" label="Tipo" value="Mestizo" />
-              <Tile icon="cake-variant-outline" label="Edad" value="2 años" />
-              <Tile icon="palette-outline" label="Color" value="Negro / Blanco" />
-              <Tile icon="ruler" label="Tamaño" value="Mediano" />
+              <Tile icon="dog" label="Raza" value={breedName} />
+              <Tile icon="cake-variant-outline" label="Edad" value={ageText} />
+              <Tile icon="palette-outline" label="Color" value={colorName} />
+              <Tile
+                icon="ruler"
+                label="Tamaño"
+                value={
+                  dog?.size
+                    ? (sizeLabel[locale] ?? sizeLabel.es)[dog.size] ?? "—"
+                    : "—"
+                }
+              />
             </View>
+            {dog?.sex && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.dateRow}>
+                  <MaterialCommunityIcons
+                    name={dog.sex === "MALE" ? "gender-male" : "gender-female"}
+                    size={18}
+                    color={colors.textMuted}
+                  />
+                  <Text style={styles.dateText}>
+                    {(sexLabel[locale] ?? sexLabel.es)[dog.sex] ?? "—"}
+                  </Text>
+                </View>
+              </>
+            )}
             <View style={styles.divider} />
             <View style={styles.dateRow}>
-              <MaterialCommunityIcons name="calendar-outline" size={18} color={colors.textMuted} />
+              <MaterialCommunityIcons
+                name="calendar-outline"
+                size={18}
+                color={colors.textMuted}
+              />
               <Text style={styles.dateText}>
                 Visto por última vez:{" "}
-                {report.lastSeen.time
-                  ? new Date(report.lastSeen.time).toLocaleString("es-CL")
+                {report.lastSeenAt
+                  ? new Date(report.lastSeenAt).toLocaleString("es-CL")
                   : "—"}
               </Text>
             </View>
@@ -121,53 +209,116 @@ export default function ReportDetailScreen() {
           </SectionCard>
 
           {/* Mini map */}
-          <SectionCard title="Última ubicación">
-            <View style={styles.mapWrap}>
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: report.lastSeen.latitude,
-                  longitude: report.lastSeen.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-                pitchEnabled={false}
-                rotateEnabled={false}
-                scrollEnabled={false}
-                zoomEnabled={false}
-              >
-                <Marker
-                  coordinate={report.lastSeen}
-                  pinColor={colors.error}
-                />
-              </MapView>
-            </View>
-            <Link href="/map" asChild>
-              <Pressable style={styles.mapBtn}>
-                <Text style={styles.mapBtnText}>Ver en mapa completo</Text>
-                <MaterialCommunityIcons name="arrow-right" size={16} color={colors.primary} />
-              </Pressable>
-            </Link>
-          </SectionCard>
+          {loc && (
+            <SectionCard title="Última ubicación">
+              <View style={styles.mapWrap}>
+                <MapView
+                  style={styles.map}
+                  initialRegion={{
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  }}
+                  pitchEnabled={false}
+                  rotateEnabled={false}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                >
+                  <Marker
+                    coordinate={{
+                      latitude: loc.latitude,
+                      longitude: loc.longitude,
+                    }}
+                    pinColor={colors.error}
+                  />
+                </MapView>
+              </View>
+            </SectionCard>
+          )}
 
           {/* Sightings */}
-          <SectionCard title={`Avistamientos (${report.sightings.length})`}>
-            {report.sightings.length === 0 ? (
+          <SectionCard title={`Avistamientos (${sightings.length})`}>
+            {sightings.length === 0 ? (
               <View style={styles.empty}>
-                <MaterialCommunityIcons name="map-marker-question" size={32} color={colors.textMuted} />
-                <Text style={styles.emptyText}>Aún no hay avistamientos</Text>
+                <MaterialCommunityIcons
+                  name="map-marker-question"
+                  size={32}
+                  color={colors.textMuted}
+                />
+                <Text style={styles.emptyText}>
+                  Aún no hay avistamientos
+                </Text>
               </View>
             ) : (
               <View style={{ gap: spacing.md }}>
-                {report.sightings.map((s, i) => (
-                  <View key={s.id} style={styles.sightingRow}>
-                    <IconCircle icon="map-marker-outline" color={colors.primary} size={40} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.sightingComment}>{s.comment}</Text>
-                      <Text style={styles.sightingTime}>
-                        {new Date(s.seenAt).toLocaleString("es-CL")}
-                      </Text>
+                {sightings.map((s: any) => (
+                  <View key={s.id} style={styles.sightingCard}>
+                    <View style={styles.sightingRow}>
+                      <IconCircle
+                        icon="map-marker-outline"
+                        color={colors.primary}
+                        size={40}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.sightingComment}>
+                          {s.notes ?? s.comment ?? "Avistamiento reportado"}
+                        </Text>
+                        {s.location?.addressText && (
+                          <View style={styles.sightingLocationRow}>
+                            <MaterialCommunityIcons
+                              name="map-marker"
+                              size={12}
+                              color={colors.onPrimaryContainer}
+                            />
+                            <Text style={styles.sightingLocation} numberOfLines={1}>
+                              {s.location.addressText}
+                            </Text>
+                          </View>
+                        )}
+                        <View style={styles.sightingMeta}>
+                          {s.user?.name && (
+                            <Text style={styles.sightingUser}>
+                              {s.user.name}
+                            </Text>
+                          )}
+                          <Text style={styles.sightingTime}>
+                            {new Date(s.createdAt).toLocaleString("es-CL")}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
+                    {s.image?.url && (
+                      <Image
+                        source={{ uri: s.image.url }}
+                        style={styles.sightingImage}
+                      />
+                    )}
+                    {s.location && (
+                      <View style={styles.sightingMapWrap}>
+                        <MapView
+                          style={styles.sightingMap}
+                          initialRegion={{
+                            latitude: s.location.latitude,
+                            longitude: s.location.longitude,
+                            latitudeDelta: 0.005,
+                            longitudeDelta: 0.005,
+                          }}
+                          pitchEnabled={false}
+                          rotateEnabled={false}
+                          scrollEnabled={false}
+                          zoomEnabled={false}
+                        >
+                          <Marker
+                            coordinate={{
+                              latitude: s.location.latitude,
+                              longitude: s.location.longitude,
+                            }}
+                            pinColor={colors.primary}
+                          />
+                        </MapView>
+                      </View>
+                    )}
                   </View>
                 ))}
               </View>
@@ -175,48 +326,54 @@ export default function ReportDetailScreen() {
           </SectionCard>
 
           {/* Owner */}
-          <SectionCard title="Contactar al dueño">
-            <Pressable style={styles.ownerRow} onPress={callOwner}>
-              <IconCircle icon="phone" color={colors.tertiary} size={44} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.ownerName}>María González</Text>
-                <Text style={styles.ownerPhone}>+56 9 8765 4321</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textMuted} />
-            </Pressable>
-          </SectionCard>
+          {owner && (
+            <SectionCard title="Contactar al dueño">
+              <Pressable style={styles.ownerRow} onPress={callOwner}>
+                <IconCircle icon="phone" color={colors.tertiary} size={44} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ownerName}>{owner.name}</Text>
+                  <Text style={styles.ownerPhone}>
+                    {owner.phone ?? owner.email ?? "—"}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={22}
+                  color={colors.textMuted}
+                />
+              </Pressable>
+            </SectionCard>
+          )}
         </View>
       </ScrollView>
 
       {/* Footer CTAs */}
-      <View style={styles.footer}>
-        <Pressable
-          style={styles.btnPrimary}
-          onPress={() =>
-            router.push({ pathname: "/found-dog", params: { reportId: id } })
-          }
-        >
-          <MaterialCommunityIcons name="heart" size={18} color="#ffffff" />
-          <Text style={styles.btnPrimaryText}>Creo que lo encontré</Text>
-        </Pressable>
-        <View style={styles.footerRow}>
-          <Pressable style={styles.btnOutline} onPress={() => router.push("/scan/nose")}>
-            <MaterialCommunityIcons name="line-scan" size={16} color={colors.primary} />
-            <Text style={styles.btnOutlineText}>Escanear trufa</Text>
+      {report.status === "ACTIVE" && (
+        <View style={styles.footer}>
+          <Pressable
+            style={styles.btnPrimary}
+            onPress={() =>
+              router.push({
+                pathname: "/report-sighting",
+                params: { reportId: id },
+              })
+            }
+          >
+            <MaterialCommunityIcons name="eye-plus" size={18} color="#ffffff" />
+            <Text style={styles.btnPrimaryText}>Reportar avistamiento</Text>
           </Pressable>
-          <Link href="/report-sighting" asChild>
-            <Pressable style={styles.btnGhost}>
-              <Text style={styles.btnGhostText}>Reportar avistamiento</Text>
-            </Pressable>
-          </Link>
         </View>
-      </View>
+      )}
 
       <ScreenHeader
         variant="overlay"
         right={
           <Pressable style={styles.shareButton} onPress={shareReport}>
-            <MaterialCommunityIcons name="share-variant" size={20} color="#ffffff" />
+            <MaterialCommunityIcons
+              name="share-variant"
+              size={20}
+              color="#ffffff"
+            />
           </Pressable>
         }
       />
@@ -285,16 +442,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  loadingText: {
-    color: colors.textMuted,
-    textAlign: "center",
-    marginTop: spacing.xxl,
-  },
   content: {
-    paddingBottom: 200,
+    paddingBottom: 140,
   },
 
-  // Hero
   hero: {
     width: SCREEN_WIDTH,
     height: HERO_HEIGHT,
@@ -342,7 +493,6 @@ const styles = StyleSheet.create({
     marginTop: -spacing.md,
   },
 
-  // Info grid
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -372,7 +522,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
 
-  // Map
   mapWrap: {
     height: 180,
     borderRadius: radii.md,
@@ -381,21 +530,7 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  mapBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    marginTop: spacing.sm,
-  },
-  mapBtnText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
-    color: colors.primary,
-  },
 
-  // Empty
   empty: {
     alignItems: "center",
     paddingVertical: spacing.lg,
@@ -407,29 +542,68 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
 
-  // Sightings
-  sightingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
+  sightingCard: {
     backgroundColor: colors.primaryContainer,
     borderRadius: radii.md,
     padding: spacing.md,
+    gap: spacing.sm,
+  },
+  sightingRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
   },
   sightingComment: {
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
     color: colors.onPrimaryContainer,
+    lineHeight: 18,
+  },
+  sightingMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: 4,
+  },
+  sightingLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginTop: 3,
+  },
+  sightingLocation: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.onPrimaryContainer,
+    opacity: 0.8,
+    flex: 1,
+  },
+  sightingUser: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+    color: colors.onPrimaryContainer,
+    opacity: 0.8,
   },
   sightingTime: {
     fontFamily: fonts.body,
     fontSize: 11,
     color: colors.onPrimaryContainer,
     opacity: 0.7,
-    marginTop: 2,
+  },
+  sightingImage: {
+    width: "100%",
+    height: 160,
+    borderRadius: radii.sm,
+  },
+  sightingMapWrap: {
+    height: 120,
+    borderRadius: radii.sm,
+    overflow: "hidden",
+  },
+  sightingMap: {
+    flex: 1,
   },
 
-  // Owner
   ownerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -447,7 +621,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Footer
   footer: {
     position: "absolute",
     left: 0,
@@ -458,7 +631,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.outlineVariant,
-    gap: spacing.sm + 2,
     paddingBottom: spacing.lg + 8,
   },
   btnPrimary: {
@@ -466,7 +638,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
-    backgroundColor: colors.tertiary,
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     borderRadius: radii.md,
   },
@@ -474,39 +646,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 16,
     color: "#ffffff",
-  },
-  footerRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  btnOutline: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs + 2,
-    paddingVertical: 12,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
-  btnOutlineText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: colors.primary,
-  },
-  btnGhost: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: radii.md,
-  },
-  btnGhostText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: colors.textMuted,
   },
 
   shareButton: {

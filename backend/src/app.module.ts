@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import type { SignOptions } from 'jsonwebtoken';
 import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
@@ -19,6 +20,7 @@ const jwtExpiresIn: SignOptions['expiresIn'] =
 
 @Module({
   imports: [
+    EventEmitterModule.forRoot(),
     PrismaModule,
     JwtModule.register({
       global: true,

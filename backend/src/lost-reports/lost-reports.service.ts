@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LostReportStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLostReportDto } from './dto/create-lost-report.dto';
@@ -7,12 +8,19 @@ import {
   PublicStatusFilter,
 } from './dto/list-public-lost-reports.dto';
 import { t } from '../i18n/messages';
+import {
+  LOST_REPORT_STATUS_CHANGED,
+  LostReportStatusChangedEvent,
+} from '../notifications/events/notification.events';
 
 type Tx = Prisma.TransactionClient;
 
 @Injectable()
 export class LostReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async create(ownerId: string, payload: CreateLostReportDto, lang?: string) {
     return this.prisma.$transaction(async (tx: Tx) => {
@@ -249,7 +257,7 @@ export class LostReportsService {
       throw new HttpException(t(lang, 'LOST_REPORT_NOT_ACTIVE'), HttpStatus.BAD_REQUEST);
     }
 
-    return this.prisma.$transaction(async (tx: Tx) => {
+    const result = await this.prisma.$transaction(async (tx: Tx) => {
       const updated = await tx.lostReport.update({
         where: { id },
         data: { status: nextStatus },
@@ -264,5 +272,17 @@ export class LostReportsService {
       });
       return updated;
     });
+
+    this.eventEmitter.emit(
+      LOST_REPORT_STATUS_CHANGED,
+      new LostReportStatusChangedEvent(
+        id,
+        report.dogId,
+        report.ownerId,
+        nextStatus as 'RESOLVED' | 'CANCELLED',
+      ),
+    );
+
+    return result;
   }
 }
