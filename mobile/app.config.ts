@@ -7,6 +7,7 @@ const androidConfig: ExpoConfig["android"] = {
     foregroundImage: "./assets/icon.png",
     backgroundColor: "#FFFFFF",
   },
+  googleServicesFile: "./google-services.json",
 };
 
 export default ({ config }: ConfigContext): ExpoConfig =>
