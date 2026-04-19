@@ -6,7 +6,6 @@ import {
   TextInput,
   FlatList,
   Modal,
-  Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
   ViewStyle,
@@ -145,7 +144,7 @@ export function LocationSearchField({
         <View style={styles.backdrop}>
           <Pressable style={StyleSheet.absoluteFill} onPress={close} />
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior="padding"
             style={[
               styles.sheet,
               { paddingBottom: Math.max(insets.bottom, spacing.md) },

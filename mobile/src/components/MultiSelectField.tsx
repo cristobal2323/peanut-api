@@ -5,7 +5,6 @@ import {
   Pressable,
   TextInput,
   FlatList,
-  Platform,
   KeyboardAvoidingView,
   Modal,
   ViewStyle,
@@ -127,7 +126,7 @@ export function MultiSelectField({
         <View style={styles.backdrop}>
           <Pressable style={StyleSheet.absoluteFill} onPress={cancel} />
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior="padding"
             style={[
               styles.sheet,
               { paddingBottom: Math.max(insets.bottom, spacing.md) },

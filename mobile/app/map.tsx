@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Component, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
   Pressable,
   ScrollView,
   Image,
+  Platform,
+  Linking,
 } from "react-native";
 import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
@@ -61,7 +63,50 @@ function useDebouncedValue<T>(value: T, delay = 300): T {
   return debounced;
 }
 
-export default function MapScreen() {
+class MapErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error("MAP CRASH:", error.message);
+    console.error("MAP STACK:", error.stack);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 20 }}>
+          <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 10 }}>
+            Error en el mapa
+          </Text>
+          <Text style={{ fontSize: 12, color: "red", textAlign: "center" }}>
+            {this.state.error.message}
+          </Text>
+          <Text style={{ fontSize: 10, color: "#666", marginTop: 10, textAlign: "center" }}>
+            {this.state.error.stack?.slice(0, 500)}
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function MapScreenWrapper() {
+  return (
+    <MapErrorBoundary>
+      <MapScreenInner />
+    </MapErrorBoundary>
+  );
+}
+
+function MapScreenInner() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const mapRef = useRef<MapView | null>(null);
@@ -74,15 +119,24 @@ export default function MapScreen() {
   const [region, setRegion] = useState<Region | null>(null);
   const [searchedLocation, setSearchedLocation] =
     useState<SelectedLocation | null>(null);
+  const [locationDenied, setLocationDenied] = useState(false);
 
   // Resolve initial region once: user position if granted, otherwise world view.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const perm = await Location.getForegroundPermissionsAsync();
+        let perm = await Location.getForegroundPermissionsAsync();
+        if (perm.status !== "granted") {
+          perm = await Location.requestForegroundPermissionsAsync();
+        }
+        if (perm.status !== "granted") {
+          if (!cancelled) setLocationDenied(true);
+        }
         if (perm.status === "granted") {
-          const loc = await Location.getLastKnownPositionAsync({});
+          const loc =
+            (await Location.getLastKnownPositionAsync({})) ??
+            (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }));
           if (!cancelled && loc) {
             const next = {
               latitude: loc.coords.latitude,
@@ -286,6 +340,27 @@ export default function MapScreen() {
           })}
         </ScrollView>
       </View>
+
+      {/* Location permission banner */}
+      {locationDenied && zoomTooWide && (
+        <View style={styles.locationBanner}>
+          <MaterialCommunityIcons name="map-marker-off" size={28} color={colors.primary} />
+          <View style={styles.locationBannerText}>
+            <Text style={styles.locationBannerTitle}>
+              Ubicación desactivada
+            </Text>
+            <Text style={styles.locationBannerDesc}>
+              Activa tu ubicación para ver los reportes de perros perdidos cerca de ti
+            </Text>
+          </View>
+          <Pressable
+            style={styles.locationBannerBtn}
+            onPress={() => Linking.openSettings()}
+          >
+            <Text style={styles.locationBannerBtnText}>Activar</Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* Bottom carousel */}
       {carouselPins.length > 0 && !zoomTooWide && (
@@ -542,6 +617,50 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.primaryContainer,
+  },
+
+  // Location banner
+  locationBanner: {
+    position: "absolute",
+    top: "45%",
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: "#ffffff",
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  locationBannerText: {
+    flex: 1,
+  },
+  locationBannerTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.onSurface,
+  },
+  locationBannerDesc: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  locationBannerBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radii.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  locationBannerBtnText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: "#ffffff",
   },
 
   // FAB

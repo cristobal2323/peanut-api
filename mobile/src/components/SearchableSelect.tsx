@@ -6,7 +6,6 @@ import {
   TextInput,
   FlatList,
   ActivityIndicator,
-  Platform,
   KeyboardAvoidingView,
   Modal,
   ViewStyle,
@@ -118,7 +117,7 @@ export function SearchableSelect({
             }}
           />
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior="padding"
             style={[
               styles.sheet,
               { paddingBottom: Math.max(insets.bottom, spacing.md) },

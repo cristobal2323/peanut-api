@@ -1,5 +1,8 @@
 import { ExpoConfig, ConfigContext } from "expo/config";
 
+const GOOGLE_MAPS_API_KEY =
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "AIzaSyChocYX5d2Cr1elKwJ6SABHe1JXVvzWO48";
+
 const androidConfig: ExpoConfig["android"] = {
   package: "com.cristobal2323.peanut",
   versionCode: 1,
@@ -8,6 +11,11 @@ const androidConfig: ExpoConfig["android"] = {
     backgroundColor: "#FFFFFF",
   },
   googleServicesFile: "./google-services.json",
+  config: {
+    googleMaps: {
+      apiKey: GOOGLE_MAPS_API_KEY,
+    },
+  },
 };
 
 export default ({ config }: ConfigContext): ExpoConfig =>
