@@ -18,13 +18,30 @@ import { useAuthStore } from "../../src/store/auth";
 import { useDogsStore } from "../../src/store/dogs";
 import { dogsApi, mapApiDogToDog } from "../../src/api/dogs";
 import { lostReportsApi } from "../../src/api/lostReports";
+import { notificationsApi } from "../../src/api/notifications";
 import { queryKeys } from "../../src/lib/queryClient";
+import type { NotificationKind } from "../../src/types";
 import { usePreferencesStore } from "../../src/store/preferences";
 import { useTranslation } from "../../src/i18n";
 
-// Local alias kept for readability in styles below.
-// Mirrors the global theme primary so any palette change propagates.
 const ACCENT = colors.primary;
+
+const NOTIF_ICON: Record<NotificationKind, { name: string; color: string; bg: string }> = {
+  match: { name: "check-circle", color: "#16A34A", bg: "#DCFCE7" },
+  sighting: { name: "map-marker-radius", color: "#F59E0B", bg: "#FEF3C7" },
+  system: { name: "bell-outline", color: ACCENT, bg: `${ACCENT}1A` },
+};
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "Ahora";
+  if (mins < 60) return `Hace ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Hace ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `Hace ${days}d`;
+}
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -56,20 +73,16 @@ export default function HomeScreen() {
     queryFn: lostReportsApi.getActive,
   });
 
-  const recentActivity = [
-    {
-      id: "1",
-      message: heroDog
-        ? `Trufa de ${heroDog.name} escaneada correctamente`
-        : "Bienvenido a Trufa ID",
-      time: "Hace 2 dias",
+  const { data: notifications = [], isLoading: notifsLoading } = useQuery({
+    queryKey: [...queryKeys.notifications, "home"],
+    queryFn: () => notificationsApi.listPaginated({ take: 10 }),
+    select: (res) => {
+      const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      return res.items
+        .filter((n) => new Date(n.createdAt).getTime() >= oneWeekAgo)
+        .slice(0, 5);
     },
-    {
-      id: "2",
-      message: "Nuevo perro perdido cerca de ti",
-      time: "Hace 5 horas",
-    },
-  ];
+  });
 
   return (
     <View style={styles.screen}>
@@ -302,18 +315,57 @@ export default function HomeScreen() {
 
         {/* ── Actividad reciente ── */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Actividad reciente</Text>
-          <View style={styles.activityList}>
-            {recentActivity.map((item) => (
-              <View key={item.id} style={styles.activityItem}>
-                <View style={styles.activityDot} />
-                <View style={styles.activityInfo}>
-                  <Text style={styles.activityMsg}>{item.message}</Text>
-                  <Text style={styles.activityTime}>{item.time}</Text>
-                </View>
-              </View>
-            ))}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Actividad reciente</Text>
+            <Link href="/(tabs)/notifications">
+              <Text style={styles.sectionLink}>Ver todo</Text>
+            </Link>
           </View>
+
+          {notifsLoading ? (
+            <ActivityIndicator color={colors.primary} size="small" />
+          ) : notifications.length === 0 ? (
+            <View style={styles.emptyActivity}>
+              <MaterialCommunityIcons
+                name="bell-sleep-outline"
+                size={28}
+                color={colors.outlineVariant}
+              />
+              <Text style={styles.emptyActivityText}>
+                Sin actividad esta semana
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.activityList}>
+              {notifications.map((item) => {
+                const icon = NOTIF_ICON[item.type] ?? NOTIF_ICON.system;
+                return (
+                  <View key={item.id} style={styles.activityItem}>
+                    <View
+                      style={[
+                        styles.activityIcon,
+                        { backgroundColor: icon.bg },
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name={icon.name as any}
+                        size={16}
+                        color={icon.color}
+                      />
+                    </View>
+                    <View style={styles.activityInfo}>
+                      <Text style={styles.activityMsg}>
+                        {item.title || item.message}
+                      </Text>
+                      <Text style={styles.activityTime}>
+                        {timeAgo(item.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
       </View>
       </ScrollView>
@@ -635,12 +687,22 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 4,
   },
-  activityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: ACCENT,
-    marginTop: 5,
+  activityIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyActivity: {
+    alignItems: "center",
+    paddingVertical: 20,
+    gap: 8,
+  },
+  emptyActivityText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.textMuted,
   },
   activityInfo: {
     flex: 1,
