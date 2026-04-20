@@ -346,6 +346,8 @@ model NotificationSettings {
   emailEnabled       Boolean
   smsEnabled         Boolean
   nearbyEnabled      Boolean  @default(true)
+  matchesEnabled     Boolean  @default(true)
+  sightingsEnabled   Boolean  @default(true)
   lostAlertsRadiusKm Float
   latitude           Float?
   longitude          Float?

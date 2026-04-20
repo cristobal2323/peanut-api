@@ -18,6 +18,14 @@ export class UpdateNotificationSettingsDto {
   nearbyEnabled?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  matchesEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  sightingsEnabled?: boolean;
+
+  @IsOptional()
   @IsNumber()
   @Min(1)
   @Max(100)

@@ -71,6 +71,9 @@ export const notificationsApi = {
       pushEnabled: boolean;
       emailEnabled: boolean;
       smsEnabled: boolean;
+      nearbyEnabled: boolean;
+      matchesEnabled: boolean;
+      sightingsEnabled: boolean;
       lostAlertsRadiusKm: number;
     }>("/notifications/settings"),
 
@@ -78,6 +81,8 @@ export const notificationsApi = {
     pushEnabled?: boolean;
     emailEnabled?: boolean;
     nearbyEnabled?: boolean;
+    matchesEnabled?: boolean;
+    sightingsEnabled?: boolean;
     lostAlertsRadiusKm?: number;
   }) =>
     http("/notifications/settings", {

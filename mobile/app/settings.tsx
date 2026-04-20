@@ -25,12 +25,18 @@ export default function SettingsScreen() {
   const setNotificationPref = usePreferencesStore((s) => s.setNotificationPref);
   const logout = useAuthStore((s) => s.logout);
 
+  const settingsKeyMap: Partial<Record<keyof NotificationPrefs, string>> = {
+    nearby: "nearbyEnabled",
+    matches: "matchesEnabled",
+    sightings: "sightingsEnabled",
+    emailDigest: "emailEnabled",
+  };
+
   const handleNotifPref = (key: keyof NotificationPrefs, value: boolean) => {
     setNotificationPref(key, value);
-    if (key === "nearby") {
-      notificationsApi.updateSettings({ nearbyEnabled: value }).catch(() => {});
-    } else if (key === "emailDigest") {
-      notificationsApi.updateSettings({ emailEnabled: value }).catch(() => {});
+    const apiKey = settingsKeyMap[key];
+    if (apiKey) {
+      notificationsApi.updateSettings({ [apiKey]: value }).catch(() => {});
     }
   };
 
@@ -39,7 +45,12 @@ export default function SettingsScreen() {
 
   React.useEffect(() => {
     notificationsApi.getSettings().then((s) => {
-      if (s?.lostAlertsRadiusKm) setRadius(s.lostAlertsRadiusKm);
+      if (!s) return;
+      if (s.lostAlertsRadiusKm) setRadius(s.lostAlertsRadiusKm);
+      if (s.nearbyEnabled !== undefined) setNotificationPref("nearby", s.nearbyEnabled);
+      if (s.matchesEnabled !== undefined) setNotificationPref("matches", s.matchesEnabled);
+      if (s.sightingsEnabled !== undefined) setNotificationPref("sightings", s.sightingsEnabled);
+      if (s.emailEnabled !== undefined) setNotificationPref("emailDigest", s.emailEnabled);
     }).catch(() => {});
   }, []);
 

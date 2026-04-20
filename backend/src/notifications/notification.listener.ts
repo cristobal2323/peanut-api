@@ -91,6 +91,12 @@ export class NotificationListener {
     if (!lostReport) return;
     if (lostReport.ownerId === event.reporterUserId) return;
 
+    const settings = await this.prisma.notificationSettings.findUnique({
+      where: { userId: lostReport.ownerId },
+      select: { sightingsEnabled: true },
+    });
+    if (settings && !settings.sightingsEnabled) return;
+
     await this.notifications.create({
       userId: lostReport.ownerId,
       type: 'NEW_SIGHTING',
