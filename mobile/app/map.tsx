@@ -27,14 +27,20 @@ import {
   haversineKm,
   PublicStatusParam,
 } from "../src/api/lostReports";
+import {
+  sightingsApi,
+  mapSightingToMapPin,
+  PublicSightingStatusParam,
+} from "../src/api/sightings";
 import { usePreferencesStore } from "../src/store/preferences";
 import { MapPin } from "../src/types";
 
-type Filter = "all" | "lost" | "found";
+type Filter = "all" | "lost" | "found" | "sighting";
 
 const FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "Todos" },
+  { value: "all", label: "Activos" },
   { value: "lost", label: "Perdidos" },
+  { value: "sighting", label: "Avistados" },
   { value: "found", label: "Encontrados" },
 ];
 
@@ -52,7 +58,10 @@ const CAROUSEL_MAX = 10;
 const normLng = (x: number) => ((x + 540) % 360) - 180;
 
 const statusParam = (f: Filter): PublicStatusParam =>
-  f === "lost" ? "active" : f === "found" ? "resolved" : "any";
+  f === "found" ? "resolved" : "active";
+
+const sightingStatusParam = (f: Filter): PublicSightingStatusParam =>
+  f === "found" ? "found" : "active";
 
 function useDebouncedValue<T>(value: T, delay = 300): T {
   const [debounced, setDebounced] = useState(value);
@@ -176,9 +185,12 @@ function MapScreenInner() {
   }, [debouncedRegion, zoomTooWide]);
 
   const statusParamValue = statusParam(filter);
+  const sightingStatusValue = sightingStatusParam(filter);
+  const showSightings = filter !== "lost";
+  const showLostReports = filter !== "sighting";
 
   const { data: page } = useQuery({
-    enabled: !!bbox,
+    enabled: !!bbox && showLostReports,
     queryKey: [
       "lostReportsPublic",
       "map",
@@ -197,16 +209,41 @@ function MapScreenInner() {
     placeholderData: keepPreviousData,
   });
 
-  const apiReports = page?.items ?? [];
-  const exceededCap = page?.nextCursor != null;
+  const { data: sightingsPage } = useQuery({
+    enabled: !!bbox && showSightings,
+    queryKey: [
+      "sightingsPublic",
+      "map",
+      bbox?.minLat,
+      bbox?.maxLat,
+      bbox?.minLng,
+      bbox?.maxLng,
+      sightingStatusValue,
+    ],
+    queryFn: () =>
+      sightingsApi.listPublic({
+        ...(bbox ?? {}),
+        status: sightingStatusValue,
+        take: MAP_PAGE_SIZE,
+      }),
+    placeholderData: keepPreviousData,
+  });
 
-  const pins = useMemo<MapPin[]>(
-    () =>
-      apiReports
-        .map((r) => mapApiLostReportToMapPin(r, locale, userCoords))
-        .filter((p): p is MapPin => p !== null),
-    [apiReports, locale, userCoords]
-  );
+  const apiReports = showLostReports ? page?.items ?? [] : [];
+  const apiSightings = showSightings ? sightingsPage?.items ?? [] : [];
+  const exceededCap =
+    (showLostReports && page?.nextCursor != null) ||
+    (showSightings && sightingsPage?.nextCursor != null);
+
+  const pins = useMemo<MapPin[]>(() => {
+    const reportPins = apiReports
+      .map((r) => mapApiLostReportToMapPin(r, locale, userCoords))
+      .filter((p): p is MapPin => p !== null);
+    const sightingPins = apiSightings
+      .map((s) => mapSightingToMapPin(s, locale, userCoords))
+      .filter((p): p is MapPin => p !== null);
+    return [...reportPins, ...sightingPins];
+  }, [apiReports, apiSightings, locale, userCoords]);
 
   const carouselPins = useMemo(() => {
     if (!region) return [];
@@ -234,8 +271,19 @@ function MapScreenInner() {
     );
   };
 
-  const colorFor = (status: "lost" | "found") =>
-    status === "lost" ? colors.error : colors.secondary;
+  const colorFor = (status: MapPin["status"]) =>
+    status === "lost"
+      ? colors.error
+      : status === "sighting"
+        ? colors.accentAmber
+        : colors.secondary;
+
+  const badgeLabelFor = (status: MapPin["status"]) =>
+    status === "lost"
+      ? "Perdido"
+      : status === "sighting"
+        ? "Avistado"
+        : "Encontrado";
 
   const headerSubtitle = zoomTooWide
     ? "Acerca el mapa para ver reportes"
@@ -393,7 +441,7 @@ function MapScreenInner() {
                         ]}
                       >
                         <Text style={styles.miniBadgeText}>
-                          {p.status === "lost" ? "Perdido" : "Encontrado"}
+                          {badgeLabelFor(p.status)}
                         </Text>
                       </View>
                     </View>
@@ -407,14 +455,16 @@ function MapScreenInner() {
                       <Text style={styles.miniDistance}>{p.distanceKm} km</Text>
                     </View>
                   </View>
-                  <Pressable
-                    style={styles.miniArrow}
-                    onPress={() =>
-                      router.push({ pathname: "/report/[id]", params: { id: p.id } })
-                    }
-                  >
-                    <MaterialCommunityIcons name="arrow-right" size={18} color={colors.primary} />
-                  </Pressable>
+                  {p.status !== "sighting" && (
+                    <Pressable
+                      style={styles.miniArrow}
+                      onPress={() =>
+                        router.push({ pathname: "/report/[id]", params: { id: p.id } })
+                      }
+                    >
+                      <MaterialCommunityIcons name="arrow-right" size={18} color={colors.primary} />
+                    </Pressable>
+                  )}
                 </Pressable>
               );
             })}

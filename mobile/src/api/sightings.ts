@@ -1,6 +1,6 @@
 import { http } from "./http";
 import { haversineKm } from "./lostReports";
-import type { CommunityReport } from "../types";
+import type { CommunityReport, MapPin } from "../types";
 import type { Locale } from "../store/preferences";
 
 export type SightingStatusApi = "ACTIVE" | "FOUND" | "CLOSED";
@@ -39,6 +39,8 @@ export type CreateSightingPayload = {
   lostReportId?: string;
 };
 
+export type PublicSightingStatusParam = "active" | "found" | "any";
+
 export type ListPublicSightingsParams = {
   skip?: number;
   take?: number;
@@ -50,6 +52,7 @@ export type ListPublicSightingsParams = {
   minLng?: number;
   maxLng?: number;
   since?: string;
+  status?: PublicSightingStatusParam;
 };
 
 export type ListPublicSightingsResponse = {
@@ -92,6 +95,29 @@ export const sightingsApi = {
     http<SightingApi>(`/sightings/${id}/close`, { method: "POST" }),
 };
 
+export function mapSightingToMapPin(
+  s: SightingApi,
+  locale: Locale = "es",
+  userCoords?: { latitude: number; longitude: number } | null
+): MapPin | null {
+  const loc = s.location;
+  if (!loc) return null;
+  const distance = userCoords ? haversineKm(userCoords, loc) : 0;
+  const dogName =
+    s.dog?.name ?? (locale === "es" ? "Perro encontrado" : "Found dog");
+  return {
+    id: `sighting-${s.id}`,
+    lat: loc.latitude,
+    lng: loc.longitude,
+    name: dogName,
+    photo: s.image?.url ?? undefined,
+    status: s.status === "FOUND" ? "found" : "sighting",
+    distanceKm: Math.round(distance * 10) / 10,
+    breed: s.dog?.breed?.name ?? undefined,
+    location: loc.addressText ?? undefined,
+  };
+}
+
 export function mapSightingToCommunityReport(
   s: SightingApi,
   locale: Locale = "es",
@@ -108,7 +134,7 @@ export function mapSightingToCommunityReport(
     dogName,
     breed: s.dog?.breed?.name ?? "",
     description: s.notes ?? undefined,
-    reportType: s.status === "FOUND" ? "found" : "lost",
+    reportType: s.status === "FOUND" ? "found" : "sighting",
     reporterId: s.userId,
     photo: s.image?.url ?? "",
     distanceKm: Math.round(distance * 10) / 10,

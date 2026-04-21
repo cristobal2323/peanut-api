@@ -73,7 +73,7 @@ export interface AppNotification {
   data?: Record<string, string>;
 }
 
-export type ReportType = "lost" | "found";
+export type ReportType = "lost" | "found" | "sighting";
 
 export interface CommunityReport {
   id: string;
@@ -111,7 +111,7 @@ export interface MapPin {
   lng: number;
   name: string;
   photo?: string;
-  status: "lost" | "found";
+  status: "lost" | "found" | "sighting";
   distanceKm: number;
   reportType?: ReportType;
   breed?: string;

@@ -3,7 +3,7 @@ import { View, StyleSheet, ViewStyle } from "react-native";
 import { Text } from "react-native-paper";
 import { colors, fonts } from "../theme";
 
-export type StatusVariant = "safe" | "lost" | "found" | "match";
+export type StatusVariant = "safe" | "lost" | "found" | "match" | "sighting";
 export type StatusSize = "sm" | "md" | "lg";
 
 type Props = {
@@ -21,6 +21,7 @@ const VARIANT_STYLES: Record<
   lost: { bg: colors.error, fg: "#ffffff", defaultLabel: "Perdido" },
   found: { bg: colors.secondary, fg: "#ffffff", defaultLabel: "Encontrado" },
   match: { bg: colors.accentPurple, fg: "#ffffff", defaultLabel: "Coincidencia" },
+  sighting: { bg: colors.accentAmber, fg: "#ffffff", defaultLabel: "Avistado" },
 };
 
 const SIZE_STYLES: Record<StatusSize, { paddingV: number; paddingH: number; fontSize: number }> = {

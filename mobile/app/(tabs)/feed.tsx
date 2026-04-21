@@ -34,13 +34,14 @@ import {
 import {
   sightingsApi,
   mapSightingToCommunityReport,
+  PublicSightingStatusParam,
 } from "../../src/api/sightings";
 import { breedsApi, BreedOption } from "../../src/api/breeds";
 import { colorsApi, ColorOption } from "../../src/api/colors";
 import { queryKeys } from "../../src/lib/queryClient";
 import { usePreferencesStore } from "../../src/store/preferences";
 
-type FilterValue = "all" | "lost" | "found";
+type FilterValue = "all" | "lost" | "found" | "sighting";
 type DateFilter = "today" | "week" | "month";
 
 const DATE_CUTOFFS: Record<DateFilter, number> = {
@@ -50,8 +51,9 @@ const DATE_CUTOFFS: Record<DateFilter, number> = {
 };
 
 const FILTERS: { value: FilterValue; label: string }[] = [
-  { value: "all", label: "Todos" },
+  { value: "all", label: "Activos" },
   { value: "lost", label: "Perdidos" },
+  { value: "sighting", label: "Avistados" },
   { value: "found", label: "Encontrados" },
 ];
 
@@ -70,7 +72,10 @@ function timeAgo(dateStr: string): string {
 }
 
 const statusParam = (f: FilterValue): PublicStatusParam =>
-  f === "lost" ? "active" : f === "found" ? "resolved" : "any";
+  f === "found" ? "resolved" : "active";
+
+const sightingStatusParam = (f: FilterValue): PublicSightingStatusParam =>
+  f === "found" ? "found" : "active";
 
 function useDebouncedValue<T>(value: T, delay = 300): T {
   const [debounced, setDebounced] = useState(value);
@@ -172,6 +177,7 @@ export default function FeedScreen() {
     refetch,
     isRefetching,
   } = useInfiniteQuery({
+    enabled: activeFilter !== "sighting",
     queryKey: [...queryKeys.lostReportsPublic, filterKey],
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
@@ -185,28 +191,32 @@ export default function FeedScreen() {
       lat: canFilterByDistance ? activeCenter?.latitude : undefined,
       lng: canFilterByDistance ? activeCenter?.longitude : undefined,
       since: sinceIso,
+      status: sightingStatusParam(activeFilter),
     }),
-    [canFilterByDistance, effectiveDistance, activeCenter?.latitude, activeCenter?.longitude, sinceIso]
+    [canFilterByDistance, effectiveDistance, activeCenter?.latitude, activeCenter?.longitude, sinceIso, activeFilter]
   );
 
   const { data: sightingsPage } = useQuery({
+    enabled: activeFilter !== "lost",
     queryKey: [...queryKeys.sightingsPublic, sightingsFilterKey],
     queryFn: () => sightingsApi.listPublic({ ...sightingsFilterKey, take: 50 }),
   });
 
   const reports = useMemo(() => {
-    const lrItems = data?.pages.flatMap((p) => p.items) ?? [];
+    const lrItems =
+      activeFilter === "sighting"
+        ? []
+        : data?.pages.flatMap((p) => p.items) ?? [];
     const lr = lrItems.map((r) =>
       mapApiLostReportToCommunityReport(r, locale, activeCenter)
     );
 
-    const allSightings = (sightingsPage?.items ?? [])
-      .filter((s) => {
-        if (activeFilter === "lost") return s.status === "ACTIVE";
-        if (activeFilter === "found") return s.status === "FOUND";
-        return true;
-      })
-      .map((s) => mapSightingToCommunityReport(s, locale, activeCenter));
+    const allSightings =
+      activeFilter === "lost"
+        ? []
+        : (sightingsPage?.items ?? []).map((s) =>
+            mapSightingToCommunityReport(s, locale, activeCenter)
+          );
 
     if (!allSightings.length) return lr;
 
@@ -521,7 +531,7 @@ export default function FeedScreen() {
         renderItem={({ item }) => {
           const isMine = !!item.reporterId && item.reporterId === user?.id;
           const isSighting = item.id.startsWith("sighting-");
-          const isActiveSighting = isMine && isSighting && item.reportType === "lost";
+          const isActiveSighting = isMine && isSighting && item.reportType === "sighting";
           return (
             <View style={styles.cardSpacing}>
               <DogCard
@@ -529,7 +539,7 @@ export default function FeedScreen() {
                 name={item.dogName}
                 breed={item.breed}
                 description={item.description}
-                status={item.reportType === "found" ? "found" : "lost"}
+                status={item.reportType}
                 distanceKm={item.distanceKm}
                 date={timeAgo(item.createdAt)}
                 location={item.location}

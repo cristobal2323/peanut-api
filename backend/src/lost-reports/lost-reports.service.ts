@@ -214,7 +214,7 @@ export class LostReportsService {
 
     const items = await this.prisma.lostReport.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
       skip,
       take,
       include: {

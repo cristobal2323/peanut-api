@@ -3,7 +3,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma, SightingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSightingDto } from './dto/create-sighting.dto';
-import { ListPublicSightingsDto } from './dto/list-public-sightings.dto';
+import {
+  ListPublicSightingsDto,
+  PublicSightingStatusFilter,
+} from './dto/list-public-sightings.dto';
 import {
   SIGHTING_CREATED,
   SightingCreatedEvent,
@@ -111,9 +114,16 @@ export class SightingsService {
       requireLocation = true;
     }
 
+    const statusIn =
+      filter.status === PublicSightingStatusFilter.ACTIVE
+        ? [SightingStatus.ACTIVE]
+        : filter.status === PublicSightingStatusFilter.FOUND
+          ? [SightingStatus.FOUND]
+          : [SightingStatus.ACTIVE, SightingStatus.FOUND];
+
     const where: Prisma.SightingWhereInput = {
       lostReportId: null,
-      status: { in: [SightingStatus.ACTIVE, SightingStatus.FOUND] },
+      status: { in: statusIn },
       ...(requireLocation ? { location: { is: locationFilter } } : {}),
       ...(filter.since ? { createdAt: { gte: new Date(filter.since) } } : {}),
     };

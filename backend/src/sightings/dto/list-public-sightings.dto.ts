@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsEnum,
   IsInt,
   IsISO8601,
   IsLatitude,
@@ -8,6 +9,12 @@ import {
   Max,
   Min,
 } from 'class-validator';
+
+export enum PublicSightingStatusFilter {
+  ACTIVE = 'active',
+  FOUND = 'found',
+  ANY = 'any',
+}
 
 export class ListPublicSightingsDto {
   @IsOptional()
@@ -61,4 +68,8 @@ export class ListPublicSightingsDto {
   @IsOptional()
   @IsISO8601({ strict: true })
   since?: string;
+
+  @IsOptional()
+  @IsEnum(PublicSightingStatusFilter)
+  status?: PublicSightingStatusFilter;
 }
